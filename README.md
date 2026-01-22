@@ -9,3 +9,15 @@ SOEN 343 - Winter 2026 Team Project
 | [Your Name] | [Your ID] | [GitHub username] |
 | [Your Name] | [Your ID] | [GitHub username] |
 | [Your Name] | [Your ID] | [GitHub username] |
+
+
+Project Description:
+TBD
+
+
+Key features:
+TBD
+
+
+
+
