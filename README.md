@@ -4,7 +4,7 @@ SOEN 343 - Winter 2026 Team Project
 
 | Name | Student ID | GitHub username |
 | :--- | :---: | ---: |
-| Christopher Tan | 40275695 | christopher tna |
+| Christopher Tan | 40275695 | christophertna |
 | Samuel Vachon | 40281580 | SamuelVachon |
 | [Your Name] | [Your ID] | [GitHub username] |
 | [Your Name] | [Your ID] | [GitHub username] |
