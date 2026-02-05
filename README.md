@@ -11,13 +11,20 @@ SOEN 343 - Winter 2026 Team Project
 | Gregory Lajoie | 40276231 | grylajoie |
 
 
-Project Description:
-TBD
+**Project Description:**
+
+ This project asks students to develop a modern prototype urban transportation application using Agile Scrum Methodology. For a duration of around 10 weeks,
+ students will go through 4 Sprints to develop the prototype application, using mainly GitHub for project management and development. The application prototype will   
 
 
-Key features:
-TBD
+**Features:**
 
 
+
+**Users:**
+
+
+
+**Installation Guide:**
 
 
