@@ -23,10 +23,10 @@ students will go through 4 Sprints to develop the prototype application, using m
 
 
 **Users:**
-+Citizens and commuters who use shared vehicles, parking facilities, and public transport
-+Mobility service providers, such as bike-sharing, car-sharing, and scooter operators
-+Public transportation operators managing buses, metros, or trams
-+City administrators responsible for urban mobility planning and regulation. - System administrators who manage and maintain the platform.
++ Citizens and commuters who use shared vehicles, parking facilities, and public transport
++ Mobility service providers, such as bike-sharing, car-sharing, and scooter operators
++ Public transportation operators managing buses, metros, or trams
++ City administrators responsible for urban mobility planning and regulation. - System administrators who manage and maintain the platform.
 
 
 
