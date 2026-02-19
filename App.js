@@ -4,7 +4,6 @@ const cookieParser = require("cookie-parser");
 const admin = require("firebase-admin");
 const path = require("path");
 
-// ── Firebase Admin Init ───────────────────────────────────────────────────────
 const serviceAccount = require(process.env.GOOGLE_APPLICATION_CREDENTIALS || "./serviceAccountKey.json");
 
 admin.initializeApp({
@@ -18,7 +17,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
-// ── Middleware: verify Firebase ID token ──────────────────────────────────────
+// Verify Firebase ID token 
 async function verifyToken(req, res, next) {
   const idToken = req.headers.authorization?.split("Bearer ")[1]
     || req.cookies?.session;
@@ -30,7 +29,7 @@ async function verifyToken(req, res, next) {
   try {
     const decoded = await admin.auth().verifyIdToken(idToken);
 
-    // Only allow Google-provider accounts (Google Sign-In OR Gmail email/password)
+    // Only allow Google accounts for now
     const isGoogleProvider = decoded.firebase?.sign_in_provider === "google.com"
       || decoded.firebase?.sign_in_provider === "password";
 
@@ -48,9 +47,7 @@ async function verifyToken(req, res, next) {
   }
 }
 
-// ── Routes ────────────────────────────────────────────────────────────────────
-
-// POST /auth/verify — called by frontend after login to set a session cookie
+// Routes
 app.post("/auth/verify", async (req, res) => {
   const { idToken } = req.body;
   if (!idToken) return res.status(400).json({ error: "Missing idToken" });
@@ -63,11 +60,11 @@ app.post("/auth/verify", async (req, res) => {
       return res.status(403).json({ error: "Only Google/Gmail accounts are allowed." });
     }
 
-    // Optional: set a short-lived session cookie (1 hour)
+    // Optional: 1 hour max cookie session
     res.cookie("session", idToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 1000, // 1 hour
+      maxAge: 60 * 60 * 1000, 
     });
 
     res.json({ message: "Authenticated", user: { uid: decoded.uid, email: decoded.email, name: decoded.name } });
@@ -76,13 +73,12 @@ app.post("/auth/verify", async (req, res) => {
   }
 });
 
-// POST /auth/logout — clears the session cookie
+// Clear session cookie
 app.post("/auth/logout", (req, res) => {
   res.clearCookie("session");
   res.json({ message: "Logged out" });
 });
 
-// GET /api/profile — example protected route
 app.get("/api/profile", verifyToken, (req, res) => {
   res.json({
     uid: req.user.uid,
@@ -92,12 +88,11 @@ app.get("/api/profile", verifyToken, (req, res) => {
   });
 });
 
-// Serve frontend for all other routes (SPA fallback)
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// ── Start App ──────────────────────────────────────────────────────────────
+// Start
 app.listen(PORT, () => {
   console.log(`Application running at http://localhost:${PORT}`);
 });
