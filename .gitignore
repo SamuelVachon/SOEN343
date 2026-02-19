@@ -1,2 +1,3 @@
-# Ignore .env file
+node_modules/
 .env
+serviceAccountKey.json
