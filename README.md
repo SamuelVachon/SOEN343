@@ -13,8 +13,7 @@
 
 **Project Description:**
 
-This project asks students to develop a modern prototype urban transportation application using Agile Scrum Methodology. For a duration of around 10 weeks,
-students will go through 4 Sprints to develop the prototype application, using mainly GitHub for project management and development. The application prototype     SUMNS The Smart Urban Mobility Management System is a conceptual, integrated digital platform designed to coordinate and optimize multiple urban mobility services within a smart city environment. SUMMS aims to improve transportation efficiency, reduce congestion, and enhance the overall mobility experience for citizens by unifying shared mobility services, parking infrastructure, and public transportation into a single, intelligent management system.
+This project asks students to develop a modern prototype urban transportation application. For a duration of around 10 weeks, students will go through 4 sprints to develop the prototype application, using mainly GitHub for project management and development. The application prototype is a conceptual, integrated digital platform designed to coordinate and optimize multiple urban mobility services within a smart city environment. The application aims to improve transportation efficiency, reduce congestion, and enhance the overall mobility experience for citizens by unifying shared mobility services, parking infrastructure, and public transportation into a single, intelligent management system.
 
 
 
