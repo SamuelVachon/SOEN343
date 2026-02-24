@@ -8,10 +8,10 @@ const FirebaseAuthUI = dynamic(() => import("../Components/FirebaseAuthUI"), {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-lime-100  to-emerald-200 px-4 py-10">
+    <div className="min-h-screen px-4 py-10">
       <main className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-md items-center">
-        <section className="w-full rounded-2xl border border-white/50 bg-white p-8 shadow-lg shadow-emerald-900/10 ring-1 ring-white/40 backdrop-blur-xl backdrop-saturate-150">
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-600">
+        <section className="w-full rounded-2xl border border-white/50 bg-gradient-to-br from-lime-100  to-emerald-200 p-8 shadow-lg shadow-emerald-900/10 ring-1 ring-white/40 backdrop-blur-xl backdrop-saturate-150">
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-900">
             RouteCarbonIQ
           </p>
           <h1 className="mt-2 text-3xl font-semibold text-gray-900">
