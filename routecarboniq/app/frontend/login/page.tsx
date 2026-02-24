@@ -14,7 +14,9 @@ export default function LoginPage() {
           <p className="text-xs font-semibold uppercase tracking-widest text-gray-600">
             RouteCarbonIQ
           </p>
-          <h1 className="mt-2 text-3xl font-semibold text-gray-900">Welcome!</h1>
+          <h1 className="mt-2 text-3xl font-semibold text-gray-900">
+            Welcome!
+          </h1>
           <p className="mt-2 text-sm text-gray-600">
             Sign in with your preferred account method.
           </p>

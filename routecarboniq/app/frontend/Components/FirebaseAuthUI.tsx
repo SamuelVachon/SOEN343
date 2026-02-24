@@ -24,7 +24,10 @@ export default function FirebaseAuthUI() {
       signInFlow: "popup", // "redirect" also works
       callbacks: {
         // Return false to avoid full-page redirect handled by FirebaseUI
-        signInSuccessWithAuthResult: () => false,
+        signInSuccessWithAuthResult: () => {
+          window.location.assign("/frontend/home");
+          return false;
+        },
       },
     });
 
