@@ -18,6 +18,7 @@ export default function FirebaseAuthUI() {
       signInOptions: [
         firebase.auth.GoogleAuthProvider.PROVIDER_ID,
         firebase.auth.EmailAuthProvider.PROVIDER_ID,
+        firebase.auth.PhoneAuthProvider.PROVIDER_ID,
         // add more providers if you want
       ],
       signInFlow: "popup", // "redirect" also works
