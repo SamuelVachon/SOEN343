@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Nunito, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import { AuthProvider } from "../app/frontend/src/context/AuthContext"; // 👈 add this
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const nunito = Nunito({
+  variable: "--font-nunito",
   subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "600", "700", "800", "900"],
 });
 
 const geistMono = Geist_Mono({
@@ -27,7 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${nunito.className} ${nunito.variable} ${geistMono.variable} antialiased`}
       >
         {/* 👇 Wrap the entire app */}
         <AuthProvider>{children}</AuthProvider>
