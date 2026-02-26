@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "../src/context/AuthContext";
 import Link from "next/link";
 import SignOutButton from "../Components/SignOutButton";
-import { Bike, Bus, CarFront, ChartLine, MoveRight, Leaf } from "lucide-react";
+import { Bike, Bus, CarFront, ChartLine, MoveRight, Leaf, MapPin } from "lucide-react";
 
 export default function Home() {
   const { user, loading } = useAuth();
@@ -51,13 +51,25 @@ export default function Home() {
       <main className="relative z-10 mx-auto flex h-[calc(100vh-100px)] max-w-6xl flex-col justify-center pb-8">
 
         {/* Header Section */}
-        <header className="mb-8">
-          <h1 className="text-4xl font-bold tracking-tight text-slate-800 sm:text-5xl">
-            Hello, <span className="text-emerald-500/90">{user.displayName}</span>
-          </h1>
-          <p className="mt-3 text-lg font-medium text-slate-400">
-            Navigate Montreal’s transit ecosystem seamlessly.
-          </p>
+        <header className="mb-8 flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight text-slate-800 sm:text-5xl">
+              Hello, <span className="text-emerald-500/90">{user.displayName}</span>
+            </h1>
+            <p className="mt-3 text-lg font-medium text-slate-400">
+              Navigate Montreal’s transit ecosystem seamlessly.
+            </p>
+          </div>
+
+          {/* Plan Trip Button */}
+          <Link
+            href="/"
+            className="group flex items-center gap-3 rounded-2xl bg-slate-900 px-7 py-4 text-white shadow-2xl shadow-slate-300 transition-all hover:-translate-y-1 hover:bg-slate-800 active:scale-95"
+          >
+            <MapPin size={18} className="text-emerald-400" />
+            <span className="text-sm font-bold uppercase tracking-widest">Plan Trip</span>
+            <MoveRight size={16} className="ml-1 opacity-50 transition-transform group-hover:translate-x-1 group-hover:opacity-100" />
+          </Link>
         </header>
 
         {/* Action Grid */}
@@ -70,10 +82,10 @@ export default function Home() {
                 <Bike size={22} />
               </div>
               <h3 className="text-lg font-bold text-slate-700">BIXI</h3>
-              <p className="mt-2 text-sm font-medium leading-relaxed text-slate-400">Rent a bike and track available stations.</p>
+              <p className="mt-2 text-sm font-medium leading-relaxed text-slate-400">Track available bike stations.</p>
             </div>
             <div className="mt-6 flex items-center text-xs font-bold text-rose-400 uppercase tracking-wider">
-              Rent Now <MoveRight size={16} className="ml-2 transition-transform group-hover:translate-x-1" />
+              Stations <MoveRight size={16} className="ml-2 transition-transform group-hover:translate-x-1" />
             </div>
           </Link>
 
@@ -91,17 +103,17 @@ export default function Home() {
             </div>
           </Link>
 
-          {/* Parking Container */}
+          {/* Parking & Car Rental Container */}
           <Link href="/" className="group relative flex flex-col justify-between overflow-hidden rounded-[2.5rem] border border-slate-200/60 bg-white/70 p-8 shadow-xl shadow-slate-300/50 backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1 hover:bg-white/90">
             <div>
               <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-700 text-white shadow-lg shadow-slate-100 group-hover:scale-110 transition-transform">
                 <CarFront size={22} strokeWidth={2} />
               </div>
-              <h3 className="text-lg font-bold text-slate-700">Parking</h3>
-              <p className="mt-2 text-sm font-medium leading-relaxed text-slate-400">Locate available city parking spots.</p>
+              <h3 className="text-lg font-bold text-slate-700">Car Services</h3>
+              <p className="mt-2 text-sm font-medium leading-relaxed text-slate-400">Rent a vehicle or locate city parking spots.</p>
             </div>
             <div className="mt-6 flex items-center text-xs font-bold text-slate-600 uppercase tracking-wider">
-              Find Space <MoveRight size={16} className="ml-2 transition-transform group-hover:translate-x-1" />
+              Rent & Park <MoveRight size={16} className="ml-2 transition-transform group-hover:translate-x-1" />
             </div>
           </Link>
 
