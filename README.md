@@ -32,11 +32,19 @@ This project asks students to develop a modern prototype urban transportation ap
 
 
 **Installation Guide:**
- + run `cd routeraboniq` in a terminal
- + run `npm install`
- + run `npm i firebase firebaseui`
+
++ run in the terminal:
+```bash
+cd routeraboniq
+npm install
+npm i firebase firebaseui
+```
+
 
 **How to run:**
-+ run `npm run dev`
++ run in the terminal:
+```bash
+npm run dev
+```
 
 
