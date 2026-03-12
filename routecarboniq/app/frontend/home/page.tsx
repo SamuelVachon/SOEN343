@@ -148,7 +148,7 @@ export default function Home() {
               </p>
             </div>
             <div className="mt-6 flex items-center text-xs font-bold text-slate-600 uppercase tracking-wider">
-              Rent & Park{" "}
+              Park{" "}
               <MoveRight
                 size={16}
                 className="ml-2 transition-transform group-hover:translate-x-1"
