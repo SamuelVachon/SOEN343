@@ -1,10 +1,7 @@
 "use client";
 
-import { Leaf } from "lucide-react";
+import { Leaf, Search, X } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-
-type Filter = "all" | "available" | "docks" | "electric";
-type ActiveTab = "stations" | "system" | "alerts";
 
 interface Station {
   station_id: string;
@@ -56,6 +53,7 @@ export default function BixiMap() {
   const [statuses, setStatuses] = useState<Record<string, StationStatus>>({});
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<any>(null);
@@ -136,7 +134,6 @@ export default function BixiMap() {
       if (!s.lat || !s.lon) return;
       const st = statuses[s.station_id];
       const bikes = st?.num_bikes_available || 0;
-      const ebikes = st?.num_ebikes_available || 0;
       const docks = st?.num_docks_available || 0;
 
       const color = bikes > 5 ? "#16a34a" : bikes > 0 ? "#ea580c" : "#9ca3af";
@@ -151,16 +148,38 @@ export default function BixiMap() {
       const marker = L.marker([s.lat, s.lon], { icon }).addTo(
         leafletMapRef.current,
       ).bindPopup(`
-          <div style="font-family:'Nunito',sans-serif;padding:4px;min-width:160px">
-            <div style="font-weight:600;margin-bottom:6px;font-size:13px">${s.name}</div>
-            <div style="font-size:12px;color:#555">🚲 ${bikes} bikes</div>
-            
-            <div style="font-size:12px;color:#555">🅿 ${docks} free docks</div>
-            <div style="font-size:11px;color:#aaa;margin-top:4px">Capacity: ${s.capacity}</div>
+        <div style="font-family:'Nunito',sans-serif;padding:4px;min-width:180px">
+          <div style="font-weight:700;margin-bottom:8px;font-size:14px;color:#1e293b">${s.name}</div>
+          
+          <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px">
+            <div style="font-size:12px;color:#475569;display:flex;justify-content:space-between">
+              <span>🚲 Available Bikes</span>
+              <span style="font-weight:700;color:${bikes > 0 ? '#16a34a' : '#ef4444'}">${bikes}</span>
+            </div>
+            <div style="font-size:12px;color:#475569;display:flex;justify-content:space-between">
+              <span>🅿 Docks</span>
+              <span style="font-weight:700;color:#64748b">${docks}</span>
+            </div>
           </div>
-  
-        `);
-      //<div style="font-size:12px;color:#555">⚡ ${ebikes} e-bikes</div>
+          
+          <button 
+            style="
+              width:100%;
+              background:#10b981;
+              color:white;
+              border:none;
+              padding:8px;
+              border-radius:8px;
+              font-weight:600;
+              font-size:12px;
+            "
+            onmouseover="this.style.background='#059669'"
+            onmouseout="this.style.background='#10b981'"
+          >
+            Reserve Bike
+          </button>
+        </div>
+      `);
 
       markersRef.current.push(marker);
     });
@@ -210,8 +229,7 @@ export default function BixiMap() {
         <div style={{ display: "flex", gap: 24 }}>
           {[
             { label: "Bikes", val: totalBikes, color: "#16a34a" },
-            //{ label: "E-Bikes", val: totalEbikes, color: "#2563eb" },
-            { label: "Free Docks", val: totalDocks, color: "#ea580c" },
+            { label: "Docks", val: totalDocks, color: "#ea580c" },
           ].map(({ label, val, color }) => (
             <div key={label} style={{ textAlign: "center" }}>
               <div
@@ -265,6 +283,49 @@ export default function BixiMap() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Search Bar */}
+      <div style={{
+        position: "absolute",
+        top: 80,
+        left: "50%",
+        transform: "translateX(-50%)",
+        width: "90%",
+        height: "48px",
+        zIndex: 1000,
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        padding: "0px 16px",
+        background: "white",
+        borderRadius: "12px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+        border: "1px solid #e5e7eb",
+      }}>
+        <Search size={18} className="text-slate-400" />
+        <input
+          type="text"
+          placeholder="Enter a station name"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{
+            flex: 1,
+            border: "none",
+            outline: "none",
+            fontSize: 15,
+            color: "#1e293b",
+            background: "transparent"
+          }}
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            style={{ fontSize: 18, color: "#94a3b8", cursor: "pointer", border: "none", background: "none" }}
+          >
+            <X size={18} />
+          </button>
+        )}
       </div>
 
       {/* Map */}
