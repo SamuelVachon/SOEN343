@@ -2,6 +2,9 @@
 
 import { Leaf, Search, X } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import ReservationModal, {
+  type ReservationStep,
+} from "./ReservationModal";
 
 interface Station {
   station_id: string;
@@ -48,16 +51,36 @@ async function fetchFeed(name: keyof typeof FEEDS) {
   return res.json();
 }
 
+declare global {
+  interface Window {
+    triggerReserve?: (name: string) => void;
+  }
+}
+
 export default function BixiMap() {
   const [stations, setStations] = useState<Station[]>([]);
   const [statuses, setStatuses] = useState<Record<string, StationStatus>>({});
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [reservationStep, setReservationStep] = useState<ReservationStep>("idle");
+  const [selectedStationName, setSelectedStationName] = useState("");
+  const [duration, setDuration] = useState(30); // default 30 mins
 
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+
+  useEffect(() => {
+    (window as any).triggerReserve = (name: string) => {
+      setSelectedStationName(name);
+      setReservationStep("form");
+    };
+
+    return () => {
+      delete window.triggerReserve;
+    };
+  }, []);
 
   // Fetch data
   useEffect(() => {
@@ -135,6 +158,7 @@ export default function BixiMap() {
       const st = statuses[s.station_id];
       const bikes = st?.num_bikes_available || 0;
       const docks = st?.num_docks_available || 0;
+      const canReserve = bikes > 0;
 
       const color = bikes > 5 ? "#16a34a" : bikes > 0 ? "#ea580c" : "#9ca3af";
 
@@ -162,21 +186,22 @@ export default function BixiMap() {
             </div>
           </div>
           
-          <button 
+          <button
+            ${canReserve ? `onclick="triggerReserve('${s.name.replace(/'/g, "\\'")}')"` : "disabled"}
             style="
               width:100%;
-              background:#10b981;
+              background:${canReserve ? "#10b981" : "#94a3b8"};
               color:white;
               border:none;
               padding:8px;
               border-radius:8px;
               font-weight:600;
               font-size:12px;
+              cursor:${canReserve ? "pointer" : "not-allowed"};
             "
-            onmouseover="this.style.background='#059669'"
-            onmouseout="this.style.background='#10b981'"
+            ${canReserve ? `onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'"` : ""}
           >
-            Reserve Bike
+            ${canReserve ? "Reserve Bike" : "No Bikes Available"}
           </button>
         </div>
       `);
@@ -194,6 +219,19 @@ export default function BixiMap() {
     (a, s) => a + (s.num_docks_available || 0),
     0,
   );
+
+  const handleDurationChange = (val: string) => {
+    const num = parseInt(val);
+    if (isNaN(num)) setDuration(0);
+    else if (num > 1440) setDuration(1440); // cap at 24 hours (1440 mins)
+    else if (num < 0) setDuration(0);
+    else setDuration(num);
+  };
+
+  const handleConfirmReservation = () => {
+    setReservationStep("processing");
+    setTimeout(() => setReservationStep("success"), 2000);
+  };
 
   return (
     <div
@@ -347,6 +385,15 @@ export default function BixiMap() {
         </div>
       )}
       <div ref={mapRef} style={{ flex: 1 }} />
+
+      <ReservationModal
+        reservationStep={reservationStep}
+        selectedStationName={selectedStationName}
+        duration={duration}
+        onDurationChange={handleDurationChange}
+        onConfirm={handleConfirmReservation}
+        onClose={() => setReservationStep("idle")}
+      />
     </div>
   );
 }
