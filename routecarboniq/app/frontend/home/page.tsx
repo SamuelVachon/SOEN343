@@ -135,7 +135,7 @@ export default function Home() {
 
           {/* Parking Container */}
           <Link
-            href="/"
+            href="/frontend/Parking"
             className="group relative flex flex-col justify-between overflow-hidden rounded-[2.5rem] border border-slate-200/60 bg-white/70 p-8 shadow-xl shadow-slate-300/50 backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1 hover:bg-white/90"
           >
             <div>

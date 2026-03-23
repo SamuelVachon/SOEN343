@@ -11,8 +11,7 @@ import Form from 'next/form'
 export default function STMPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [origin, setOrigin] = useState("");
-  const [destination, setDestination] = useState("");
+  const [address, setAddress] = useState("Concondia University, Montreal, QC");
   
 
 
@@ -54,10 +53,8 @@ export default function STMPage() {
               Route<span className="text-emerald-500/80">Carbon</span>IQ
             </p>
           </div>
-          <form onSubmit={(e) => {setOrigin(e.target.origin.value); setDestination(e.target.destination.value); e.preventDefault();}}>
-          <input name="origin" placeholder="Enter your starting point" />
-          <input name="destination" placeholder="Enter your destination" />
-
+          <form onSubmit={(e) => {setAddress(e.target.address.value); e.preventDefault();}}>
+          <input name="address" placeholder="Enter your destination"/>
           <button type="submit" style={{marginLeft: 8, padding: "6px 12px", background: "#10b981", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer"}}>Search</button>
           </form>
           
@@ -87,9 +84,7 @@ export default function STMPage() {
           frameBorder="0"
           style={{ border: 0}}
           referrerPolicy="no-referrer-when-downgrade"
-          src={origin && destination ? 
-            `https://www.google.com/maps/embed/v1/directions?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&origin=${origin}&destination=${destination}&mode=transit` :
-            `https://www.google.com/maps/embed/v1/search?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=public+transit+near+${user.location}`}
+          src={`https://www.google.com/maps/embed/v1/search?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=parking+near+${address}`}
           allowFullScreen>
         </iframe>
       </div>
