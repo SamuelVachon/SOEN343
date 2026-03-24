@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Minus, Plus, Settings2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { subscribeToAdminAccess } from "../../lib/adminAccess";
+import { useAuth } from "../../src/context/AuthContext";
 import {
   addBikeToStation,
   removeBikeFromStation,
@@ -11,6 +14,10 @@ import {
 } from "../../lib/rentalFlow";
 
 export default function BikeAdminPage() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminLoading, setAdminLoading] = useState(true);
   const [stations, setStations] = useState<FirestoreStation[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -18,13 +25,52 @@ export default function BikeAdminPage() {
   const [pendingStationId, setPendingStationId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
+    if (!user) {
+      setIsAdmin(false);
+      setAdminLoading(false);
+      return;
+    }
+
+    setAdminLoading(true);
+    const unsubscribe = subscribeToAdminAccess(user.uid, (nextIsAdmin) => {
+      setIsAdmin(nextIsAdmin);
+      setAdminLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [authLoading, user]);
+
+  useEffect(() => {
+    if (authLoading || adminLoading) {
+      return;
+    }
+
+    if (!user) {
+      router.replace("/frontend/login");
+      return;
+    }
+
+    if (!isAdmin) {
+      router.replace("/frontend/rent-a-bike");
+    }
+  }, [adminLoading, authLoading, isAdmin, router, user]);
+
+  useEffect(() => {
+    if (authLoading || adminLoading || !isAdmin) {
+      return;
+    }
+
     const unsubscribe = subscribeToStations((nextStations) => {
       setStations(nextStations);
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [adminLoading, authLoading, isAdmin]);
 
   const filteredStations = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -61,6 +107,18 @@ export default function BikeAdminPage() {
       setPendingStationId(null);
     }
   };
+
+  if (authLoading || adminLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-100 text-sm text-slate-500">
+        Checking admin access...
+      </main>
+    );
+  }
+
+  if (!user || !isAdmin) {
+    return null;
+  }
 
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-8 text-slate-900 sm:px-6 lg:px-10">

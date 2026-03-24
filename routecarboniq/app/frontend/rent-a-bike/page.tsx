@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Leaf, Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { subscribeToAdminAccess } from "../lib/adminAccess";
 import { useAuth } from "../src/context/AuthContext";
 import {
   completeRental,
@@ -98,6 +99,7 @@ export default function BixiMap() {
   const [guestRentalUserKey] = useState(() =>
     typeof window === "undefined" ? null : getOrCreateRentalUserKey(),
   );
+  const [canManageBikes, setCanManageBikes] = useState(false);
   const [stations, setStations] = useState<Station[]>([]);
   const [stationsLoadedFromFirestore, setStationsLoadedFromFirestore] =
     useState(false);
@@ -137,6 +139,11 @@ export default function BixiMap() {
   const actualRideCost = activeRental
     ? Number((1.6 + actualRideDurationMinutes * 0.21).toFixed(2))
     : 0;
+
+  useEffect(() => {
+    const unsubscribe = subscribeToAdminAccess(user?.uid, setCanManageBikes);
+    return () => unsubscribe();
+  }, [user?.uid]);
 
   useEffect(() => {
     const unsubscribe = subscribeToStations((firestoreStations) => {
@@ -489,10 +496,10 @@ export default function BixiMap() {
 
   const filteredStations = searchQuery.trim()
     ? stations
-      .filter((s) =>
-        s.name.toLowerCase().includes(searchQuery.toLowerCase().trim()),
-      )
-      .slice(0, 5)
+        .filter((s) =>
+          s.name.toLowerCase().includes(searchQuery.toLowerCase().trim()),
+        )
+        .slice(0, 5)
     : [];
 
   const handleSearchSelect = (station: Station) => {
@@ -567,12 +574,14 @@ export default function BixiMap() {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <Link
-            href="/frontend/rent-a-bike/admin"
-            className="inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 transition hover:border-emerald-300 hover:text-emerald-600"
-          >
-            Manage bikes
-          </Link>
+          {canManageBikes && (
+            <Link
+              href="/frontend/rent-a-bike/admin"
+              className="inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 transition hover:border-emerald-300 hover:text-emerald-600"
+            >
+              Manage bikes
+            </Link>
+          )}
           {/* Legend */}
           <div
             style={{ display: "flex", gap: 12, fontSize: 11, color: "#6b7280" }}
@@ -656,7 +665,7 @@ export default function BixiMap() {
           </button>
         )}
       </div>
-      
+
       {/* Search Dropdown */}
       {filteredStations.length > 0 && (
         <div
