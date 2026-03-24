@@ -1,5 +1,5 @@
-import { Bike, CheckCircle2, Clock, Loader2, MapPinned } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Bike, CheckCircle2, Loader2, MapPinned } from "lucide-react";
+import { useState } from "react";
 
 export type ReservationStep =
   | "idle"
@@ -18,20 +18,20 @@ interface StationOption {
 interface CompletedRentalSummary {
   returnStationName: string;
   actualDurationMinutes: number;
-  totalReserved: number;
+  finalCharge: number;
 }
 
 interface ReservationModalProps {
   reservationStep: ReservationStep;
   selectedStationName: string;
-  duration: number;
   stationOptions: StationOption[];
-  timeRemainingSeconds: number;
+  rideElapsedSeconds: number;
   returnStationId: string;
+  actualRideDurationMinutes: number;
+  actualRideCost: number;
   processingMessage: string;
   errorMessage: string;
   completedRental: CompletedRentalSummary | null;
-  onDurationChange: (value: string) => void;
   onReturnStationChange: (value: string) => void;
   onConfirm: () => void;
   onReturn: () => void;
@@ -57,14 +57,14 @@ const formatCVC = (v: string) => v.replace(/\D/g, "").slice(0, 4);
 export default function ReservationModal({
   reservationStep,
   selectedStationName,
-  duration,
   stationOptions,
-  timeRemainingSeconds,
+  rideElapsedSeconds,
   returnStationId,
+  actualRideDurationMinutes,
+  actualRideCost,
   processingMessage,
   errorMessage,
   completedRental,
-  onDurationChange,
   onReturnStationChange,
   onConfirm,
   onReturn,
@@ -78,13 +78,8 @@ export default function ReservationModal({
     cvc: "",
   });
 
-  useEffect(() => {
-    if (reservationStep === "idle")
-      setPayment({ name: "", cardNumber: "", expiry: "", cvc: "" });
-  }, [reservationStep]);
-
-  const minutes = Math.floor(timeRemainingSeconds / 60);
-  const seconds = timeRemainingSeconds % 60;
+  const minutes = Math.floor(rideElapsedSeconds / 60);
+  const seconds = rideElapsedSeconds % 60;
   const formattedTime = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 
   const isPaymentValid =
@@ -92,10 +87,6 @@ export default function ReservationModal({
     payment.cardNumber.replace(/\s/g, "").length === 16 &&
     payment.expiry.length === 5 &&
     payment.cvc.length >= 3;
-
-  const canReserve = duration > 0 && isPaymentValid;
-  const usageFee = duration * PRICE_PER_MINUTE;
-  const totalFee = (SERVICE_FEE + usageFee).toFixed(2);
 
   if (reservationStep === "idle") return null;
 
@@ -116,28 +107,14 @@ export default function ReservationModal({
 
             {errorMessage && <p style={styles.errorText}>{errorMessage}</p>}
 
-            <div style={styles.infoBox}>
-              <Clock size={18} color="#64748b" />
-              <div style={{ flex: 1 }}>
-                <label style={styles.label}>Ride Duration (Mins)</label>
-                <input
-                  type="number"
-                  style={styles.durationInput}
-                  value={duration === 0 ? "" : duration}
-                  onChange={(e) => onDurationChange(e.target.value)}
-                  placeholder="Enter minutes"
-                />
-              </div>
-            </div>
-
             <div style={styles.priceCard}>
               <div style={styles.priceRow}>
                 <span>Service Fee</span>
                 <span>${SERVICE_FEE.toFixed(2)}</span>
               </div>
               <div style={{ ...styles.priceRow, margin: "4px 0" }}>
-                <span>Usage ${PRICE_PER_MINUTE.toFixed(2)}/min</span>
-                <span>${usageFee.toFixed(2)}</span>
+                <span>Usage Rate</span>
+                <span>${PRICE_PER_MINUTE.toFixed(2)}/min</span>
               </div>
               <div style={styles.divider} />
               <div
@@ -148,8 +125,163 @@ export default function ReservationModal({
                   fontSize: 15,
                 }}
               >
-                <span>Total</span>
-                <span>${totalFee}</span>
+                <span>Billing</span>
+                <span>Charged at return</span>
+              </div>
+            </div>
+
+            <p style={styles.helperText}>
+              Start the ride now and pay only after returning the bike based on
+              actual ride duration.
+            </p>
+
+            <button onClick={onConfirm} style={styles.btnPrimary(true)}>
+              Reserve Bike
+            </button>
+            <button onClick={onClose} style={styles.btnText}>
+              Cancel
+            </button>
+          </div>
+        )}
+
+        {/* STEP: PROCESSING */}
+        {reservationStep === "processing" && (
+          <div style={{ textAlign: "center", padding: "20px 0" }}>
+            <Loader2
+              size={40}
+              className="animate-spin"
+              style={{ margin: "0 auto", color: "#10b981" }}
+            />
+            <p style={{ marginTop: 16, fontWeight: 600 }}>
+              {processingMessage}
+            </p>
+          </div>
+        )}
+
+        {/* STEP: SUCCESS */}
+        {reservationStep === "success" && (
+          <div style={{ textAlign: "center" }}>
+            <CheckCircle2
+              size={50}
+              color="#10b981"
+              style={{ margin: "0 auto" }}
+            />
+            <h3 style={{ fontWeight: 700, marginTop: 16, fontSize: 18 }}>
+              Success!
+            </h3>
+            <p style={{ fontSize: 14, color: "#64748b", marginTop: 4 }}>
+              Your bike at <strong>{selectedStationName}</strong> is ready.
+            </p>
+            <button onClick={onStartRide} style={styles.btnClose}>
+              Start Ride
+            </button>
+          </div>
+        )}
+
+        {/* STEP: ACTIVE */}
+        {reservationStep === "active" && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 16,
+              textAlign: "center",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <div style={styles.iconCircle}>
+                <Bike size={26} color="#10b981" />
+              </div>
+            </div>
+
+            <div>
+              <h3 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>
+                Ride in Progress
+              </h3>
+              <p style={{ fontSize: 13, color: "#64748b", margin: "4px 0 0" }}>
+                Started from {selectedStationName}
+              </p>
+            </div>
+
+            <div style={styles.timerCard}>
+              <div style={styles.timerLabel}>Ride Time</div>
+              <div style={styles.timerValue}>{formattedTime}</div>
+              <p
+                style={{
+                  fontSize: 12,
+                  color: "#64748b",
+                  margin: 0,
+                }}
+              >
+                Your charge continues to update until you return the bike.
+              </p>
+            </div>
+
+            <button onClick={onReturn} style={styles.btnPrimary(true)}>
+              Return Bike
+            </button>
+          </div>
+        )}
+
+        {/* STEP: RETURNING */}
+        {reservationStep === "returning" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div>
+              <h3 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>
+                Complete Return
+              </h3>
+              <p style={{ fontSize: 13, color: "#64748b", margin: "4px 0 0" }}>
+                Choose the station where the bike was returned.
+              </p>
+            </div>
+
+            {errorMessage && <p style={styles.errorText}>{errorMessage}</p>}
+
+            <div style={styles.infoBox}>
+              <MapPinned size={18} color="#64748b" />
+              <div style={{ flex: 1 }}>
+                <label style={styles.label}>Destination Station</label>
+                <select
+                  style={styles.selectField}
+                  value={returnStationId}
+                  onChange={(e) => onReturnStationChange(e.target.value)}
+                >
+                  <option value="">Select a station</option>
+                  {stationOptions.map((station) => (
+                    <option key={station.station_id} value={station.station_id}>
+                      {station.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div style={styles.priceCard}>
+              <div style={styles.priceRow}>
+                <span>Ride Duration</span>
+                <span>{actualRideDurationMinutes} mins</span>
+              </div>
+              <div style={{ ...styles.priceRow, marginTop: 6 }}>
+                <span>Service Fee</span>
+                <span>${SERVICE_FEE.toFixed(2)}</span>
+              </div>
+              <div style={{ ...styles.priceRow, marginTop: 6 }}>
+                <span>Usage</span>
+                <span>
+                  ${(actualRideDurationMinutes * PRICE_PER_MINUTE).toFixed(2)}
+                </span>
+              </div>
+              <div style={styles.divider} />
+              <div
+                style={{
+                  ...styles.priceRow,
+                  fontWeight: 700,
+                  color: "#000",
+                  fontSize: 15,
+                }}
+              >
+                <span>Total Due</span>
+                <span>${actualRideCost.toFixed(2)}</span>
               </div>
             </div>
 
@@ -210,139 +342,13 @@ export default function ReservationModal({
             </div>
 
             <button
-              disabled={!canReserve}
-              onClick={onConfirm}
-              style={styles.btnPrimary(canReserve)}
-            >
-              Confirm & Pay
-            </button>
-            <button onClick={onClose} style={styles.btnText}>
-              Cancel
-            </button>
-          </div>
-        )}
-
-        {/* STEP: PROCESSING */}
-        {reservationStep === "processing" && (
-          <div style={{ textAlign: "center", padding: "20px 0" }}>
-            <Loader2
-              size={40}
-              className="animate-spin"
-              style={{ margin: "0 auto", color: "#10b981" }}
-            />
-            <p style={{ marginTop: 16, fontWeight: 600 }}>
-              {processingMessage}
-            </p>
-          </div>
-        )}
-
-        {/* STEP: SUCCESS */}
-        {reservationStep === "success" && (
-          <div style={{ textAlign: "center" }}>
-            <CheckCircle2
-              size={50}
-              color="#10b981"
-              style={{ margin: "0 auto" }}
-            />
-            <h3 style={{ fontWeight: 700, marginTop: 16, fontSize: 18 }}>
-              Success!
-            </h3>
-            <p style={{ fontSize: 14, color: "#64748b", marginTop: 4 }}>
-              Your bike at <strong>{selectedStationName}</strong> is reserved
-              for {duration} minutes.
-            </p>
-            <button onClick={onStartRide} style={styles.btnClose}>
-              Start Ride
-            </button>
-          </div>
-        )}
-
-        {/* STEP: ACTIVE */}
-        {reservationStep === "active" && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 16,
-              textAlign: "center",
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "center" }}>
-              <div style={styles.iconCircle}>
-                <Bike size={26} color="#10b981" />
-              </div>
-            </div>
-
-            <div>
-              <h3 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>
-                Ride in Progress
-              </h3>
-              <p style={{ fontSize: 13, color: "#64748b", margin: "4px 0 0" }}>
-                Started from {selectedStationName}
-              </p>
-            </div>
-
-            <div style={styles.timerCard}>
-              <div style={styles.timerLabel}>Time Remaining</div>
-              <div style={styles.timerValue}>{formattedTime}</div>
-              <p
-                style={{
-                  fontSize: 12,
-                  color: timeRemainingSeconds === 0 ? "#ef4444" : "#64748b",
-                  margin: 0,
-                }}
-              >
-                {timeRemainingSeconds === 0
-                  ? "Reserved time is over. Please select a return station."
-                  : "You can return your bike at any station before the timer ends."}
-              </p>
-            </div>
-
-            <button onClick={onReturn} style={styles.btnPrimary(true)}>
-              Return Bike
-            </button>
-          </div>
-        )}
-
-        {/* STEP: RETURNING */}
-        {reservationStep === "returning" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div>
-              <h3 style={{ fontWeight: 700, fontSize: 18, margin: 0 }}>
-                Complete Return
-              </h3>
-              <p style={{ fontSize: 13, color: "#64748b", margin: "4px 0 0" }}>
-                Choose the station where the bike was returned.
-              </p>
-            </div>
-
-            {errorMessage && <p style={styles.errorText}>{errorMessage}</p>}
-
-            <div style={styles.infoBox}>
-              <MapPinned size={18} color="#64748b" />
-              <div style={{ flex: 1 }}>
-                <label style={styles.label}>Destination Station</label>
-                <select
-                  style={styles.selectField}
-                  value={returnStationId}
-                  onChange={(e) => onReturnStationChange(e.target.value)}
-                >
-                  <option value="">Select a station</option>
-                  {stationOptions.map((station) => (
-                    <option key={station.station_id} value={station.station_id}>
-                      {station.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <button
-              disabled={!returnStationId}
+              disabled={!returnStationId || !isPaymentValid}
               onClick={onReturn}
-              style={styles.btnPrimary(Boolean(returnStationId))}
+              style={styles.btnPrimary(
+                Boolean(returnStationId && isPaymentValid),
+              )}
             >
-              Confirm Return
+              Pay & Complete Return
             </button>
           </div>
         )}
@@ -378,7 +384,7 @@ export default function ReservationModal({
               </div>
               <div style={{ ...styles.priceRow, marginTop: 6 }}>
                 <span>Paid</span>
-                <span>${completedRental.totalReserved.toFixed(2)}</span>
+                <span>${completedRental.finalCharge.toFixed(2)}</span>
               </div>
             </div>
 
@@ -425,15 +431,6 @@ const styles = {
     color: "#64748b",
     display: "block",
     textTransform: "uppercase" as const,
-  },
-  durationInput: {
-    background: "transparent",
-    border: "none",
-    outline: "none",
-    fontSize: "16px",
-    fontWeight: "600",
-    width: "100%",
-    color: "#1e293b",
   },
   priceCard: {
     background: "#f8fafc",
@@ -522,6 +519,12 @@ const styles = {
     borderRadius: 10,
     padding: "10px 12px",
     fontSize: 13,
+  },
+  helperText: {
+    margin: 0,
+    color: "#64748b",
+    fontSize: 13,
+    lineHeight: 1.5,
   },
   btnPrimary: (isActive: boolean) => ({
     background: isActive ? "#10b981" : "#94a3b8",

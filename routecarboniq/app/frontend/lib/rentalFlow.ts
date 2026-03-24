@@ -13,18 +13,16 @@ export interface RentalRecord {
   userEmail: string | null;
   startStationId: string;
   startStationName: string;
-  plannedDurationMinutes: number;
   serviceFee: number;
   pricePerMinute: number;
-  totalReserved: number;
   isOpen: boolean;
   status: RentalStatus;
-  startedAt: unknown;
-  scheduledEndAt: unknown;
+  startedAt?: unknown;
   returnedAt?: unknown;
   returnStationId?: string | null;
   returnStationName?: string | null;
   actualDurationMinutes?: number;
+  finalCharge?: number;
 }
 
 export interface FirestoreStation {
@@ -54,7 +52,6 @@ interface CreateRentalInput {
   userEmail: string | null;
   startStationId: string;
   startStationName: string;
-  plannedDurationMinutes: number;
   serviceFee: number;
   pricePerMinute: number;
 }
@@ -140,17 +137,6 @@ export function subscribeToOpenRental(
 }
 
 export async function createRental(input: CreateRentalInput) {
-  const startedAt = new Date();
-  const scheduledEndAt = new Date(
-    startedAt.getTime() + input.plannedDurationMinutes * 60_000,
-  );
-  const totalReserved = Number(
-    (
-      input.serviceFee +
-      input.plannedDurationMinutes * input.pricePerMinute
-    ).toFixed(2),
-  );
-
   const rentalRef = db.collection(RENTALS_COLLECTION).doc();
   const stationRef = db
     .collection(STATIONS_COLLECTION)
@@ -162,16 +148,13 @@ export async function createRental(input: CreateRentalInput) {
     userEmail: input.userEmail,
     startStationId: input.startStationId,
     startStationName: input.startStationName,
-    plannedDurationMinutes: input.plannedDurationMinutes,
     serviceFee: input.serviceFee,
     pricePerMinute: input.pricePerMinute,
-    totalReserved,
     isOpen: true,
     status: "active",
-    startedAt,
-    scheduledEndAt,
   };
 
+  const createdAt = new Date();
   await db.runTransaction(async (transaction) => {
     const stationSnapshot = await transaction.get(stationRef);
     if (!stationSnapshot.exists) {
@@ -190,7 +173,7 @@ export async function createRental(input: CreateRentalInput) {
     transaction.update(stationRef, {
       availableBikes: availableBikes - 1,
       availableDocks: availableDocks + 1,
-      updatedAt: startedAt,
+      updatedAt: createdAt,
     });
   });
 
@@ -198,6 +181,13 @@ export async function createRental(input: CreateRentalInput) {
     id: rentalRef.id,
     ...rental,
   } satisfies RentalRecord;
+}
+
+export async function startRide(rentalId: string) {
+  const rentalRef = db.collection(RENTALS_COLLECTION).doc(rentalId);
+  await rentalRef.update({
+    startedAt: new Date(),
+  });
 }
 
 export async function completeRental(input: CompleteRentalInput) {
@@ -215,6 +205,11 @@ export async function completeRental(input: CompleteRentalInput) {
   const actualDurationMinutes = Math.max(
     1,
     Math.ceil((returnTime.getTime() - startedAtMillis) / 60_000),
+  );
+  const finalCharge = Number(
+    (rental.serviceFee + actualDurationMinutes * rental.pricePerMinute).toFixed(
+      2,
+    ),
   );
 
   const destinationStationRef = db
@@ -238,6 +233,7 @@ export async function completeRental(input: CompleteRentalInput) {
       returnStationName: input.returnStationName,
       returnedAt: returnTime,
       actualDurationMinutes,
+      finalCharge,
     });
 
     transaction.update(destinationStationRef, {
@@ -249,7 +245,7 @@ export async function completeRental(input: CompleteRentalInput) {
 
   return {
     actualDurationMinutes,
-    totalReserved: Number(rental.totalReserved.toFixed(2)),
+    finalCharge,
   };
 }
 

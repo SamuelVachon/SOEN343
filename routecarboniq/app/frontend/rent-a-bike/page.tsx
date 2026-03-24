@@ -8,6 +8,7 @@ import {
   createRental,
   getOrCreateRentalUserKey,
   seedStationsIfEmpty,
+  startRide,
   subscribeToOpenRental,
   subscribeToStations,
   timestampToMillis,
@@ -87,7 +88,7 @@ declare global {
 interface CompletedRentalSummary {
   returnStationName: string;
   actualDurationMinutes: number;
-  totalReserved: number;
+  finalCharge: number;
 }
 
 export default function BixiMap() {
@@ -110,9 +111,8 @@ export default function BixiMap() {
   const [selectedStationName, setSelectedStationName] = useState("");
   const [selectedStationId, setSelectedStationId] = useState("");
   const [returnStationId, setReturnStationId] = useState("");
-  const [duration, setDuration] = useState(30); // default 30 mins
   const [activeRental, setActiveRental] = useState<RentalRecord | null>(null);
-  const [timeRemainingSeconds, setTimeRemainingSeconds] = useState(0);
+  const [rideElapsedSeconds, setRideElapsedSeconds] = useState(0);
   const [completedRental, setCompletedRental] =
     useState<CompletedRentalSummary | null>(null);
   const [modalSessionKey, setModalSessionKey] = useState(0);
@@ -122,6 +122,19 @@ export default function BixiMap() {
   const markersRef = useRef<LeafletMarkerInstance[]>([]);
 
   const rentalUserKey = user?.uid ? `user:${user.uid}` : guestRentalUserKey;
+  const actualRideDurationMinutes = activeRental
+    ? Math.max(
+        1,
+        Math.ceil(
+          (Date.now() -
+            (timestampToMillis(activeRental.startedAt) ?? Date.now())) /
+            60_000,
+        ),
+      )
+    : 0;
+  const actualRideCost = activeRental
+    ? Number((1.6 + actualRideDurationMinutes * 0.21).toFixed(2))
+    : 0;
 
   useEffect(() => {
     const unsubscribe = subscribeToStations((firestoreStations) => {
@@ -156,7 +169,6 @@ export default function BixiMap() {
 
       setSelectedStationId(rental.startStationId);
       setSelectedStationName(rental.startStationName);
-      setDuration(rental.plannedDurationMinutes);
 
       if (reservationStep === "idle") {
         setReservationStep("active");
@@ -168,31 +180,25 @@ export default function BixiMap() {
 
   useEffect(() => {
     if (!activeRental) {
+      setRideElapsedSeconds(0);
       return;
     }
 
-    const syncRemainingTime = () => {
-      const scheduledEndAt = timestampToMillis(activeRental.scheduledEndAt);
-      if (!scheduledEndAt) {
-        setTimeRemainingSeconds(0);
+    const syncElapsedTime = () => {
+      const startedAt = timestampToMillis(activeRental.startedAt);
+      if (!startedAt) {
+        setRideElapsedSeconds(0);
         return;
       }
 
-      const remaining = Math.max(
-        0,
-        Math.ceil((scheduledEndAt - Date.now()) / 1000),
-      );
-      setTimeRemainingSeconds(remaining);
-
-      if (remaining === 0 && reservationStep === "active") {
-        setReservationStep("returning");
-      }
+      const elapsed = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+      setRideElapsedSeconds(elapsed);
     };
 
-    syncRemainingTime();
-    const interval = window.setInterval(syncRemainingTime, 1000);
+    syncElapsedTime();
+    const interval = window.setInterval(syncElapsedTime, 1000);
     return () => window.clearInterval(interval);
-  }, [activeRental, reservationStep]);
+  }, [activeRental]);
 
   useEffect(() => {
     window.triggerReserve = (name: string, stationId: string) => {
@@ -366,15 +372,6 @@ export default function BixiMap() {
     0,
   );
 
-  const handleDurationChange = (val: string) => {
-    const num = parseInt(val);
-    if (isNaN(num)) setDuration(0);
-    else if (num > 1440)
-      setDuration(1440); // cap at 24 hours (1440 mins)
-    else if (num < 0) setDuration(0);
-    else setDuration(num);
-  };
-
   const handleConfirmReservation = async () => {
     if (!selectedStationId || !rentalUserKey) {
       setErrorMessage("Unable to start the rental right now.");
@@ -391,7 +388,7 @@ export default function BixiMap() {
 
     try {
       setErrorMessage("");
-      setProcessingMessage("Processing payment...");
+      setProcessingMessage("Creating your reservation...");
       setReservationStep("processing");
 
       const rental = await createRental({
@@ -400,14 +397,12 @@ export default function BixiMap() {
         userEmail: user?.email ?? null,
         startStationId: selectedStationId,
         startStationName: selectedStationName,
-        plannedDurationMinutes: duration,
         serviceFee: 1.6,
         pricePerMinute: 0.21,
       });
 
       setActiveRental(rental);
       setReservationStep("success");
-      window.setTimeout(() => setReservationStep("active"), 1500);
     } catch (error) {
       console.error(error);
       setErrorMessage(
@@ -417,7 +412,11 @@ export default function BixiMap() {
     }
   };
 
-  const handleStartRide = () => {
+  const handleStartRide = async () => {
+    if (!activeRental) {
+      return;
+    }
+    await startRide(activeRental.id);
     setReservationStep("active");
   };
 
@@ -447,7 +446,7 @@ export default function BixiMap() {
 
     try {
       setErrorMessage("");
-      setProcessingMessage("Completing your rental...");
+      setProcessingMessage("Processing payment and completing your rental...");
       setReservationStep("processing");
 
       const result = await completeRental({
@@ -459,11 +458,11 @@ export default function BixiMap() {
       setCompletedRental({
         returnStationName: returnStation.name,
         actualDurationMinutes: result.actualDurationMinutes,
-        totalReserved: result.totalReserved,
+        finalCharge: result.finalCharge,
       });
       setReturnStationId("");
       setActiveRental(null);
-      setTimeRemainingSeconds(0);
+      setRideElapsedSeconds(0);
       setReservationStep("completed");
     } catch (error) {
       console.error(error);
@@ -474,14 +473,13 @@ export default function BixiMap() {
 
   const handleCloseModal = () => {
     setErrorMessage("");
+    setModalSessionKey((current) => current + 1);
 
     if (reservationStep === "completed") {
       setCompletedRental(null);
       setSelectedStationId("");
       setSelectedStationName("");
       setReturnStationId("");
-      setDuration(30);
-      setModalSessionKey((current) => current + 1);
     }
 
     setReservationStep("idle");
@@ -652,14 +650,14 @@ export default function BixiMap() {
         key={modalSessionKey}
         reservationStep={reservationStep}
         selectedStationName={selectedStationName}
-        duration={duration}
         stationOptions={stations}
-        timeRemainingSeconds={timeRemainingSeconds}
+        rideElapsedSeconds={rideElapsedSeconds}
         returnStationId={returnStationId}
+        actualRideDurationMinutes={actualRideDurationMinutes}
+        actualRideCost={actualRideCost}
         processingMessage={processingMessage}
         errorMessage={errorMessage}
         completedRental={completedRental}
-        onDurationChange={handleDurationChange}
         onReturnStationChange={setReturnStationId}
         onConfirm={handleConfirmReservation}
         onReturn={handleReturnBike}
