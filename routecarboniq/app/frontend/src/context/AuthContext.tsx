@@ -1,10 +1,11 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import type firebase from "firebase/compat/app";
 import { auth } from "../../lib/firebaseClient";
 
 type AuthContextType = {
-  user: any | null;
+  user: firebase.User | null;
   loading: boolean;
 };
 
@@ -14,7 +15,7 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<firebase.User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
