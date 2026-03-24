@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Leaf, Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../src/context/AuthContext";
@@ -542,6 +543,12 @@ export default function BixiMap() {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <Link
+            href="/frontend/rent-a-bike/admin"
+            className="inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 transition hover:border-emerald-300 hover:text-emerald-600"
+          >
+            Manage bikes
+          </Link>
           {/* Legend */}
           <div
             style={{ display: "flex", gap: 12, fontSize: 11, color: "#6b7280" }}
