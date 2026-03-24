@@ -1,10 +1,21 @@
 "use client";
 
 import { Leaf, Search, X } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
-import ReservationModal, {
-  type ReservationStep,
-} from "./ReservationModal";
+import { useEffect, useRef, useState } from "react";
+import { useAuth } from "../src/context/AuthContext";
+import {
+  completeRental,
+  createRental,
+  getOrCreateRentalUserKey,
+  seedStationsIfEmpty,
+  startRide,
+  subscribeToOpenRental,
+  subscribeToStations,
+  timestampToMillis,
+  type FirestoreStation,
+  type RentalRecord,
+} from "../lib/rentalFlow";
+import ReservationModal, { type ReservationStep } from "./ReservationModal";
 
 interface Station {
   station_id: string;
@@ -12,6 +23,8 @@ interface Station {
   capacity: number;
   lat?: number;
   lon?: number;
+  num_bikes_available: number;
+  num_docks_available: number;
 }
 
 interface StationStatus {
@@ -24,28 +37,43 @@ interface StationStatus {
   is_returning?: boolean;
 }
 
-interface AlertText {
-  translation?: Array<{ value?: string }>;
+type FeedName = "station_information" | "station_status";
+
+type LeafletMapInstance = object;
+
+interface LeafletMarkerInstance {
+  addTo: (map: LeafletMapInstance) => LeafletMarkerInstance;
+  bindPopup: (content: string) => LeafletMarkerInstance;
+  openPopup: () => void;
+  remove: () => void;
 }
 
-interface SystemAlert {
-  alert_id?: string;
-  alert_type?: string;
-  description?: AlertText;
-  summary?: AlertText;
+interface LeafletApi {
+  map: (element: HTMLDivElement) => {
+    setView: (
+      coordinates: [number, number],
+      zoom: number,
+    ) => LeafletMapInstance;
+  };
+  tileLayer: (
+    url: string,
+    options: { attribution: string; maxZoom: number },
+  ) => {
+    addTo: (map: LeafletMapInstance) => void;
+  };
+  divIcon: (options: {
+    className: string;
+    html: string;
+    iconSize: [number, number];
+    iconAnchor: [number, number];
+  }) => unknown;
+  marker: (
+    coordinates: [number, number],
+    options: { icon: unknown },
+  ) => LeafletMarkerInstance;
 }
 
-const FEEDS = {
-  station_information:
-    "https://gbfs.velobixi.com/gbfs/2-2/en/station_information.json",
-  station_status: "https://gbfs.velobixi.com/gbfs/2-2/en/station_status.json",
-  system_information:
-    "https://gbfs.velobixi.com/gbfs/2-2/en/system_information.json",
-  vehicle_types: "https://gbfs.velobixi.com/gbfs/2-2/en/vehicle_types.json",
-  system_alerts: "https://gbfs.velobixi.com/gbfs/2-2/en/system_alerts.json",
-};
-
-async function fetchFeed(name: keyof typeof FEEDS) {
+async function fetchFeed(name: FeedName) {
   const res = await fetch(`/api/gbfs?feed=${name}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`Feed failed (${name}): ${res.status}`);
   return res.json();
@@ -53,36 +81,148 @@ async function fetchFeed(name: keyof typeof FEEDS) {
 
 declare global {
   interface Window {
-    triggerReserve?: (name: string) => void;
+    L?: LeafletApi;
+    triggerReserve?: (name: string, stationId: string) => void;
   }
 }
 
+interface CompletedRentalSummary {
+  returnStationName: string;
+  actualDurationMinutes: number;
+  finalCharge: number;
+}
+
 export default function BixiMap() {
+  const { user } = useAuth();
+  const [guestRentalUserKey] = useState(() =>
+    typeof window === "undefined" ? null : getOrCreateRentalUserKey(),
+  );
   const [stations, setStations] = useState<Station[]>([]);
-  const [statuses, setStatuses] = useState<Record<string, StationStatus>>({});
+  const [stationsLoadedFromFirestore, setStationsLoadedFromFirestore] =
+    useState(false);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [reservationStep, setReservationStep] = useState<ReservationStep>("idle");
+  const [reservationStep, setReservationStep] =
+    useState<ReservationStep>("idle");
+  const [processingMessage, setProcessingMessage] = useState(
+    "Processing payment...",
+  );
+  const [errorMessage, setErrorMessage] = useState("");
   const [selectedStationName, setSelectedStationName] = useState("");
-  const [duration, setDuration] = useState(30); // default 30 mins
+  const [selectedStationId, setSelectedStationId] = useState("");
+  const [returnStationId, setReturnStationId] = useState("");
+  const [activeRental, setActiveRental] = useState<RentalRecord | null>(null);
+  const [rideElapsedSeconds, setRideElapsedSeconds] = useState(0);
+  const [completedRental, setCompletedRental] =
+    useState<CompletedRentalSummary | null>(null);
+  const [modalSessionKey, setModalSessionKey] = useState(0);
 
   const mapRef = useRef<HTMLDivElement>(null);
-  const leafletMapRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
+  const leafletMapRef = useRef<LeafletMapInstance | null>(null);
+  const markersRef = useRef<Map<string, LeafletMarkerInstance>>(new Map());
+
+  const rentalUserKey = user?.uid ? `user:${user.uid}` : guestRentalUserKey;
+  const actualRideDurationMinutes = activeRental
+    ? Math.max(
+        1,
+        Math.ceil(
+          (Date.now() -
+            (timestampToMillis(activeRental.startedAt) ?? Date.now())) /
+            60_000,
+        ),
+      )
+    : 0;
+  const actualRideCost = activeRental
+    ? Number((1.6 + actualRideDurationMinutes * 0.21).toFixed(2))
+    : 0;
 
   useEffect(() => {
-    (window as any).triggerReserve = (name: string) => {
+    const unsubscribe = subscribeToStations((firestoreStations) => {
+      if (firestoreStations.length === 0) {
+        setStationsLoadedFromFirestore(false);
+        return;
+      }
+
+      setStations(firestoreStations.map(mapFirestoreStationToUiStation));
+      setStationsLoadedFromFirestore(true);
+      setLastUpdated(new Date());
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!rentalUserKey) {
+      return;
+    }
+
+    const unsubscribe = subscribeToOpenRental(rentalUserKey, (rental) => {
+      setActiveRental(rental);
+
+      if (!rental) {
+        if (reservationStep === "active" || reservationStep === "returning") {
+          setReservationStep("idle");
+        }
+        return;
+      }
+
+      setSelectedStationId(rental.startStationId);
+      setSelectedStationName(rental.startStationName);
+
+      if (reservationStep === "idle") {
+        setReservationStep("active");
+      }
+    });
+
+    return () => unsubscribe();
+  }, [rentalUserKey, reservationStep]);
+
+  useEffect(() => {
+    if (!activeRental) {
+      setRideElapsedSeconds(0);
+      return;
+    }
+
+    const syncElapsedTime = () => {
+      const startedAt = timestampToMillis(activeRental.startedAt);
+      if (!startedAt) {
+        setRideElapsedSeconds(0);
+        return;
+      }
+
+      const elapsed = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+      setRideElapsedSeconds(elapsed);
+    };
+
+    syncElapsedTime();
+    const interval = window.setInterval(syncElapsedTime, 1000);
+    return () => window.clearInterval(interval);
+  }, [activeRental]);
+
+  useEffect(() => {
+    window.triggerReserve = (name: string, stationId: string) => {
+      if (activeRental) {
+        setReservationStep("active");
+        return;
+      }
+
       setSelectedStationName(name);
+      setSelectedStationId(stationId);
+      setReturnStationId("");
+      setCompletedRental(null);
+      setErrorMessage("");
+      setModalSessionKey((current) => current + 1);
       setReservationStep("form");
     };
 
     return () => {
       delete window.triggerReserve;
     };
-  }, []);
+  }, [activeRental]);
 
-  // Fetch data
+  // Seed Firestore once from Bixi if needed
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -93,20 +233,34 @@ export default function BixiMap() {
         ]);
         const stationList: Station[] = info?.data?.stations ?? [];
         const statusList: StationStatus[] = status?.data?.stations ?? [];
-        const statusMap: Record<string, StationStatus> = {};
-        for (const s of statusList) statusMap[s.station_id] = s;
-        setStations(stationList);
-        setStatuses(statusMap);
-        setLastUpdated(new Date());
+        const statusMap = new Map(
+          statusList.map((station) => [station.station_id, station]),
+        );
+
+        await seedStationsIfEmpty(
+          stationList.map((station) => {
+            const stationStatus = statusMap.get(station.station_id);
+            return {
+              ...station,
+              num_bikes_available: stationStatus?.num_bikes_available ?? 0,
+              num_docks_available:
+                stationStatus?.num_docks_available ?? station.capacity,
+            };
+          }),
+        );
       } catch (e) {
         console.error(e);
+      } finally {
+        if (stationsLoadedFromFirestore) {
+          setLoading(false);
+        }
       }
-      setLoading(false);
     }
-    load();
-    const interval = setInterval(load, 30000);
-    return () => clearInterval(interval);
-  }, []);
+
+    if (!stationsLoadedFromFirestore) {
+      void load();
+    }
+  }, [stationsLoadedFromFirestore]);
 
   // Init map once
   useEffect(() => {
@@ -119,7 +273,7 @@ export default function BixiMap() {
     }
 
     const initMap = () => {
-      const L = (window as any).L;
+      const L = window.L;
       if (!mapRef.current || !L || leafletMapRef.current) return;
       leafletMapRef.current = L.map(mapRef.current).setView(
         [45.52, -73.58],
@@ -134,7 +288,7 @@ export default function BixiMap() {
       ).addTo(leafletMapRef.current);
     };
 
-    if ((window as any).L) {
+    if (window.L) {
       initMap();
     } else {
       const script = document.createElement("script");
@@ -146,19 +300,19 @@ export default function BixiMap() {
 
   // Update markers when data changes
   useEffect(() => {
-    const L = (window as any).L;
+    const L = window.L;
     if (!L || !leafletMapRef.current || stations.length === 0) return;
+    const mapInstance = leafletMapRef.current;
 
     // Clear old markers
     markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
+    markersRef.current.clear();
 
     stations.forEach((s) => {
       if (!s.lat || !s.lon) return;
-      const st = statuses[s.station_id];
-      const bikes = st?.num_bikes_available || 0;
-      const docks = st?.num_docks_available || 0;
-      const canReserve = bikes > 0;
+      const bikes = s.num_bikes_available ?? 0;
+      const docks = s.num_docks_available ?? 0;
+      const canReserve = bikes > 0 && !activeRental;
 
       const color = bikes > 5 ? "#16a34a" : bikes > 0 ? "#ea580c" : "#9ca3af";
 
@@ -169,16 +323,15 @@ export default function BixiMap() {
         iconAnchor: [6, 6],
       });
 
-      const marker = L.marker([s.lat, s.lon], { icon }).addTo(
-        leafletMapRef.current,
-      ).bindPopup(`
+      const marker = L.marker([s.lat, s.lon], { icon }).addTo(mapInstance)
+        .bindPopup(`
         <div style="font-family:'Nunito',sans-serif;padding:4px;min-width:180px">
           <div style="font-weight:700;margin-bottom:8px;font-size:14px;color:#1e293b">${s.name}</div>
           
           <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px">
             <div style="font-size:12px;color:#475569;display:flex;justify-content:space-between">
               <span>🚲 Available Bikes</span>
-              <span style="font-weight:700;color:${bikes > 0 ? '#16a34a' : '#ef4444'}">${bikes}</span>
+              <span style="font-weight:700;color:${bikes > 0 ? "#16a34a" : "#ef4444"}">${bikes}</span>
             </div>
             <div style="font-size:12px;color:#475569;display:flex;justify-content:space-between">
               <span>🅿 Docks</span>
@@ -187,7 +340,7 @@ export default function BixiMap() {
           </div>
           
           <button
-            ${canReserve ? `onclick="triggerReserve('${s.name.replace(/'/g, "\\'")}')"` : "disabled"}
+            ${canReserve ? `onclick="triggerReserve('${s.name.replace(/'/g, "\\'")}', '${s.station_id}')"` : "disabled"}
             style="
               width:100%;
               background:${canReserve ? "#10b981" : "#94a3b8"};
@@ -201,36 +354,159 @@ export default function BixiMap() {
             "
             ${canReserve ? `onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'"` : ""}
           >
-            ${canReserve ? "Reserve Bike" : "No Bikes Available"}
+            ${activeRental ? "Ride In Progress" : canReserve ? "Reserve Bike" : "No Bikes Available"}
           </button>
         </div>
       `);
 
-      markersRef.current.push(marker);
+      markersRef.current.set(s.station_id, marker);
     });
-  }, [stations, statuses]);
+  }, [activeRental, stations]);
 
-  const totalBikes = Object.values(statuses).reduce(
-    (a, s) => a + (s.num_bikes_available || 0),
+  const totalBikes = stations.reduce(
+    (total, station) => total + (station.num_bikes_available ?? 0),
     0,
   );
 
-  const totalDocks = Object.values(statuses).reduce(
-    (a, s) => a + (s.num_docks_available || 0),
+  const totalDocks = stations.reduce(
+    (total, station) => total + (station.num_docks_available ?? 0),
     0,
   );
 
-  const handleDurationChange = (val: string) => {
-    const num = parseInt(val);
-    if (isNaN(num)) setDuration(0);
-    else if (num > 1440) setDuration(1440); // cap at 24 hours (1440 mins)
-    else if (num < 0) setDuration(0);
-    else setDuration(num);
+  const handleConfirmReservation = async () => {
+    if (!selectedStationId || !rentalUserKey) {
+      setErrorMessage("Unable to start the rental right now.");
+      return;
+    }
+
+    const currentStation = stations.find(
+      (station) => station.station_id === selectedStationId,
+    );
+    if (!currentStation || currentStation.num_bikes_available <= 0) {
+      setErrorMessage("This station is no longer available.");
+      return;
+    }
+
+    try {
+      setErrorMessage("");
+      setProcessingMessage("Creating your reservation...");
+      setReservationStep("processing");
+
+      const rental = await createRental({
+        userKey: rentalUserKey,
+        userId: user?.uid ?? null,
+        userEmail: user?.email ?? null,
+        startStationId: selectedStationId,
+        startStationName: selectedStationName,
+        serviceFee: 1.6,
+        pricePerMinute: 0.21,
+      });
+
+      setActiveRental(rental);
+      setReservationStep("success");
+    } catch (error) {
+      console.error(error);
+      setErrorMessage(
+        "Firestore is not ready yet. Enable Firestore and try again.",
+      );
+      setReservationStep("form");
+    }
   };
 
-  const handleConfirmReservation = () => {
-    setReservationStep("processing");
-    setTimeout(() => setReservationStep("success"), 2000);
+  const handleStartRide = async () => {
+    if (!activeRental) {
+      return;
+    }
+    await startRide(activeRental.id);
+    setReservationStep("active");
+  };
+
+  const handleReturnBike = async () => {
+    if (!activeRental) {
+      return;
+    }
+
+    if (reservationStep === "active") {
+      setErrorMessage("");
+      setReservationStep("returning");
+      return;
+    }
+
+    if (!returnStationId) {
+      setErrorMessage("Please choose a destination station.");
+      return;
+    }
+
+    const returnStation = stations.find(
+      (station) => station.station_id === returnStationId,
+    );
+    if (!returnStation) {
+      setErrorMessage("Selected destination station was not found.");
+      return;
+    }
+
+    try {
+      setErrorMessage("");
+      setProcessingMessage("Processing payment and completing your rental...");
+      setReservationStep("processing");
+
+      const result = await completeRental({
+        rentalId: activeRental.id,
+        returnStationId,
+        returnStationName: returnStation.name,
+      });
+
+      setCompletedRental({
+        returnStationName: returnStation.name,
+        actualDurationMinutes: result.actualDurationMinutes,
+        finalCharge: result.finalCharge,
+      });
+      setReturnStationId("");
+      setActiveRental(null);
+      setRideElapsedSeconds(0);
+      setReservationStep("completed");
+    } catch (error) {
+      console.error(error);
+      setErrorMessage("Unable to complete the rental.");
+      setReservationStep("returning");
+    }
+  };
+
+  const handleCloseModal = () => {
+    setErrorMessage("");
+    setModalSessionKey((current) => current + 1);
+
+    if (reservationStep === "completed") {
+      setCompletedRental(null);
+      setSelectedStationId("");
+      setSelectedStationName("");
+      setReturnStationId("");
+    }
+
+    setReservationStep("idle");
+  };
+
+  const filteredStations = searchQuery.trim()
+    ? stations
+      .filter((s) =>
+        s.name.toLowerCase().includes(searchQuery.toLowerCase().trim()),
+      )
+      .slice(0, 5)
+    : [];
+
+  const handleSearchSelect = (station: Station) => {
+    setSearchQuery("");
+    if (!station.lat || !station.lon) return;
+
+    const map = leafletMapRef.current as unknown as {
+      flyTo: (latlng: [number, number], zoom: number) => void;
+    } | null;
+
+    map?.flyTo([station.lat, station.lon], 17);
+
+    window.setTimeout(() => {
+      markersRef.current.get(station.station_id)?.openPopup();
+    }, 800);
   };
 
   return (
@@ -324,23 +600,25 @@ export default function BixiMap() {
       </div>
 
       {/* Search Bar */}
-      <div style={{
-        position: "absolute",
-        top: 80,
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: "90%",
-        height: "48px",
-        zIndex: 1000,
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        padding: "0px 16px",
-        background: "white",
-        borderRadius: "12px",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-        border: "1px solid #e5e7eb",
-      }}>
+      <div
+        style={{
+          position: "absolute",
+          top: 80,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "90%",
+          height: "48px",
+          zIndex: 1000,
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          padding: "0px 16px",
+          background: "white",
+          borderRadius: "12px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+          border: "1px solid #e5e7eb",
+        }}
+      >
         <Search size={18} className="text-slate-400" />
         <input
           type="text"
@@ -353,18 +631,74 @@ export default function BixiMap() {
             outline: "none",
             fontSize: 15,
             color: "#1e293b",
-            background: "transparent"
+            background: "transparent",
           }}
         />
         {searchQuery && (
           <button
             onClick={() => setSearchQuery("")}
-            style={{ fontSize: 18, color: "#94a3b8", cursor: "pointer", border: "none", background: "none" }}
+            style={{
+              fontSize: 18,
+              color: "#94a3b8",
+              cursor: "pointer",
+              border: "none",
+              background: "none",
+            }}
           >
             <X size={18} />
           </button>
         )}
       </div>
+      
+      {/* Search Dropdown */}
+      {filteredStations.length > 0 && (
+        <div
+          style={{
+            position: "absolute",
+            top: 136,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "90%",
+            zIndex: 999,
+            background: "white",
+            borderRadius: "12px",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+            border: "1px solid #e5e7eb",
+            overflow: "hidden",
+          }}
+        >
+          {filteredStations.map((station) => {
+            return (
+              <button
+                key={station.station_id}
+                onClick={() => handleSearchSelect(station)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  width: "100%",
+                  padding: "10px 16px",
+                  border: "none",
+                  borderBottom: "1px solid #f1f5f9",
+                  background: "white",
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "#f8fafc")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "white")
+                }
+              >
+                <span style={{ fontSize: 14, color: "#1e293b" }}>
+                  {station.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Map */}
       {loading && (
@@ -387,13 +721,35 @@ export default function BixiMap() {
       <div ref={mapRef} style={{ flex: 1 }} />
 
       <ReservationModal
+        key={modalSessionKey}
         reservationStep={reservationStep}
         selectedStationName={selectedStationName}
-        duration={duration}
-        onDurationChange={handleDurationChange}
+        stationOptions={stations}
+        rideElapsedSeconds={rideElapsedSeconds}
+        returnStationId={returnStationId}
+        actualRideDurationMinutes={actualRideDurationMinutes}
+        actualRideCost={actualRideCost}
+        processingMessage={processingMessage}
+        errorMessage={errorMessage}
+        completedRental={completedRental}
+        onReturnStationChange={setReturnStationId}
         onConfirm={handleConfirmReservation}
-        onClose={() => setReservationStep("idle")}
+        onReturn={handleReturnBike}
+        onStartRide={handleStartRide}
+        onClose={handleCloseModal}
       />
     </div>
   );
+}
+
+function mapFirestoreStationToUiStation(station: FirestoreStation): Station {
+  return {
+    station_id: station.id,
+    name: station.name,
+    capacity: station.capacity,
+    lat: station.lat,
+    lon: station.lon,
+    num_bikes_available: station.availableBikes,
+    num_docks_available: station.availableDocks,
+  };
 }
