@@ -45,6 +45,7 @@ type LeafletMapInstance = object;
 interface LeafletMarkerInstance {
   addTo: (map: LeafletMapInstance) => LeafletMarkerInstance;
   bindPopup: (content: string) => LeafletMarkerInstance;
+  openPopup: () => void;
   remove: () => void;
 }
 
@@ -120,7 +121,7 @@ export default function BixiMap() {
 
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<LeafletMapInstance | null>(null);
-  const markersRef = useRef<LeafletMarkerInstance[]>([]);
+  const markersRef = useRef<Map<string, LeafletMarkerInstance>>(new Map());
 
   const rentalUserKey = user?.uid ? `user:${user.uid}` : guestRentalUserKey;
   const actualRideDurationMinutes = activeRental
@@ -306,7 +307,7 @@ export default function BixiMap() {
 
     // Clear old markers
     markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
+    markersRef.current.clear();
 
     stations.forEach((s) => {
       if (!s.lat || !s.lon) return;
@@ -359,7 +360,7 @@ export default function BixiMap() {
         </div>
       `);
 
-      markersRef.current.push(marker);
+      markersRef.current.set(s.station_id, marker);
     });
   }, [activeRental, stations]);
 
@@ -484,6 +485,29 @@ export default function BixiMap() {
     }
 
     setReservationStep("idle");
+  };
+
+  const filteredStations = searchQuery.trim()
+    ? stations
+      .filter((s) =>
+        s.name.toLowerCase().includes(searchQuery.toLowerCase().trim()),
+      )
+      .slice(0, 5)
+    : [];
+
+  const handleSearchSelect = (station: Station) => {
+    setSearchQuery("");
+    if (!station.lat || !station.lon) return;
+
+    const map = leafletMapRef.current as unknown as {
+      flyTo: (latlng: [number, number], zoom: number) => void;
+    } | null;
+
+    map?.flyTo([station.lat, station.lon], 17);
+
+    window.setTimeout(() => {
+      markersRef.current.get(station.station_id)?.openPopup();
+    }, 800);
   };
 
   return (
@@ -632,6 +656,56 @@ export default function BixiMap() {
           </button>
         )}
       </div>
+      
+      {/* Search Dropdown */}
+      {filteredStations.length > 0 && (
+        <div
+          style={{
+            position: "absolute",
+            top: 136,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "90%",
+            zIndex: 999,
+            background: "white",
+            borderRadius: "12px",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+            border: "1px solid #e5e7eb",
+            overflow: "hidden",
+          }}
+        >
+          {filteredStations.map((station) => {
+            return (
+              <button
+                key={station.station_id}
+                onClick={() => handleSearchSelect(station)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  width: "100%",
+                  padding: "10px 16px",
+                  border: "none",
+                  borderBottom: "1px solid #f1f5f9",
+                  background: "white",
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "#f8fafc")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "white")
+                }
+              >
+                <span style={{ fontSize: 14, color: "#1e293b" }}>
+                  {station.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Map */}
       {loading && (
