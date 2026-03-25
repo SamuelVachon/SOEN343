@@ -1,4 +1,4 @@
-import { db } from "./firebaseClient";
+import { db } from "../../lib/firebaseClient";
 
 const RENTALS_COLLECTION = "rentals";
 const STATIONS_COLLECTION = "stations";

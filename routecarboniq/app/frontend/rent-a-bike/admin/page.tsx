@@ -8,12 +8,12 @@ import { subscribeToAdminAccess } from "../../lib/adminAccess";
 import {
   addBikeToStation,
   removeBikeFromStation,
-} from "../../lib/stationInventory";
+} from "../services/stationInventory";
 import { useAuth } from "../../src/context/AuthContext";
 import {
   subscribeToStations,
   type FirestoreStation,
-} from "../../lib/rentalFlow";
+} from "../services/rentalFlow";
 
 export default function BikeAdminPage() {
   const router = useRouter();
