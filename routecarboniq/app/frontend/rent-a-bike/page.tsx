@@ -3,43 +3,21 @@
 import Link from "next/link";
 import { Leaf, Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useRideElapsedTimer } from "./hooks/useRideElapsedTimer";
+import { useStationsData } from "./hooks/useStationsData";
 import { subscribeToAdminAccess } from "../lib/adminAccess";
-import { useAuth } from "../src/context/AuthContext";
+import { useAuth } from "../context/AuthContext";
 import {
   completeRental,
   createRental,
   getOrCreateRentalUserKey,
-  seedStationsIfEmpty,
   startRide,
   subscribeToOpenRental,
-  subscribeToStations,
   timestampToMillis,
-  type FirestoreStation,
   type RentalRecord,
-} from "../lib/rentalFlow";
+} from "./services/rentalFlow";
 import ReservationModal, { type ReservationStep } from "./ReservationModal";
-
-interface Station {
-  station_id: string;
-  name: string;
-  capacity: number;
-  lat?: number;
-  lon?: number;
-  num_bikes_available: number;
-  num_docks_available: number;
-}
-
-interface StationStatus {
-  station_id: string;
-  num_bikes_available: number;
-  num_docks_available: number;
-  num_ebikes_available?: number;
-  is_installed?: boolean;
-  is_renting?: boolean;
-  is_returning?: boolean;
-}
-
-type FeedName = "station_information" | "station_status";
+import type { CompletedRentalSummary, Station } from "./types";
 
 type LeafletMapInstance = object;
 
@@ -75,23 +53,11 @@ interface LeafletApi {
   ) => LeafletMarkerInstance;
 }
 
-async function fetchFeed(name: FeedName) {
-  const res = await fetch(`/api/gbfs?feed=${name}`, { cache: "no-store" });
-  if (!res.ok) throw new Error(`Feed failed (${name}): ${res.status}`);
-  return res.json();
-}
-
 declare global {
   interface Window {
     L?: LeafletApi;
     triggerReserve?: (name: string, stationId: string) => void;
   }
-}
-
-interface CompletedRentalSummary {
-  returnStationName: string;
-  actualDurationMinutes: number;
-  finalCharge: number;
 }
 
 export default function BixiMap() {
@@ -100,11 +66,7 @@ export default function BixiMap() {
     typeof window === "undefined" ? null : getOrCreateRentalUserKey(),
   );
   const [canManageBikes, setCanManageBikes] = useState(false);
-  const [stations, setStations] = useState<Station[]>([]);
-  const [stationsLoadedFromFirestore, setStationsLoadedFromFirestore] =
-    useState(false);
-  const [loading, setLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const { stations, loading, lastUpdated } = useStationsData();
   const [searchQuery, setSearchQuery] = useState("");
   const [reservationStep, setReservationStep] =
     useState<ReservationStep>("idle");
@@ -116,7 +78,7 @@ export default function BixiMap() {
   const [selectedStationId, setSelectedStationId] = useState("");
   const [returnStationId, setReturnStationId] = useState("");
   const [activeRental, setActiveRental] = useState<RentalRecord | null>(null);
-  const [rideElapsedSeconds, setRideElapsedSeconds] = useState(0);
+  const rideElapsedSeconds = useRideElapsedTimer(activeRental);
   const [completedRental, setCompletedRental] =
     useState<CompletedRentalSummary | null>(null);
   const [modalSessionKey, setModalSessionKey] = useState(0);
@@ -146,22 +108,6 @@ export default function BixiMap() {
   }, [user?.uid]);
 
   useEffect(() => {
-    const unsubscribe = subscribeToStations((firestoreStations) => {
-      if (firestoreStations.length === 0) {
-        setStationsLoadedFromFirestore(false);
-        return;
-      }
-
-      setStations(firestoreStations.map(mapFirestoreStationToUiStation));
-      setStationsLoadedFromFirestore(true);
-      setLastUpdated(new Date());
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
     if (!rentalUserKey) {
       return;
     }
@@ -188,28 +134,6 @@ export default function BixiMap() {
   }, [rentalUserKey, reservationStep]);
 
   useEffect(() => {
-    if (!activeRental) {
-      setRideElapsedSeconds(0);
-      return;
-    }
-
-    const syncElapsedTime = () => {
-      const startedAt = timestampToMillis(activeRental.startedAt);
-      if (!startedAt) {
-        setRideElapsedSeconds(0);
-        return;
-      }
-
-      const elapsed = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
-      setRideElapsedSeconds(elapsed);
-    };
-
-    syncElapsedTime();
-    const interval = window.setInterval(syncElapsedTime, 1000);
-    return () => window.clearInterval(interval);
-  }, [activeRental]);
-
-  useEffect(() => {
     window.triggerReserve = (name: string, stationId: string) => {
       if (activeRental) {
         setReservationStep("active");
@@ -229,46 +153,6 @@ export default function BixiMap() {
       delete window.triggerReserve;
     };
   }, [activeRental]);
-
-  // Seed Firestore once from Bixi if needed
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const [info, status] = await Promise.all([
-          fetchFeed("station_information"),
-          fetchFeed("station_status"),
-        ]);
-        const stationList: Station[] = info?.data?.stations ?? [];
-        const statusList: StationStatus[] = status?.data?.stations ?? [];
-        const statusMap = new Map(
-          statusList.map((station) => [station.station_id, station]),
-        );
-
-        await seedStationsIfEmpty(
-          stationList.map((station) => {
-            const stationStatus = statusMap.get(station.station_id);
-            return {
-              ...station,
-              num_bikes_available: stationStatus?.num_bikes_available ?? 0,
-              num_docks_available:
-                stationStatus?.num_docks_available ?? station.capacity,
-            };
-          }),
-        );
-      } catch (e) {
-        console.error(e);
-      } finally {
-        if (stationsLoadedFromFirestore) {
-          setLoading(false);
-        }
-      }
-    }
-
-    if (!stationsLoadedFromFirestore) {
-      void load();
-    }
-  }, [stationsLoadedFromFirestore]);
 
   // Init map once
   useEffect(() => {
@@ -471,7 +355,6 @@ export default function BixiMap() {
       });
       setReturnStationId("");
       setActiveRental(null);
-      setRideElapsedSeconds(0);
       setReservationStep("completed");
     } catch (error) {
       console.error(error);
@@ -756,16 +639,4 @@ export default function BixiMap() {
       />
     </div>
   );
-}
-
-function mapFirestoreStationToUiStation(station: FirestoreStation): Station {
-  return {
-    station_id: station.id,
-    name: station.name,
-    capacity: station.capacity,
-    lat: station.lat,
-    lon: station.lon,
-    num_bikes_available: station.availableBikes,
-    num_docks_available: station.availableDocks,
-  };
 }

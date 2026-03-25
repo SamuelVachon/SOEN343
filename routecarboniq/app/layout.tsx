@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Nunito, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-import { AuthProvider } from "../app/frontend/src/context/AuthContext"; // 👈 add this
+import { AuthProvider } from "./frontend/context/AuthContext"; // 👈 add this
 
 const nunito = Nunito({
   variable: "--font-nunito",
