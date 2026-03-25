@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Minus, Plus, Settings2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { subscribeToAdminAccess } from "../../lib/adminAccess";
-import { useAuth } from "../../src/context/AuthContext";
 import {
   addBikeToStation,
   removeBikeFromStation,
+} from "../../lib/stationInventory";
+import { useAuth } from "../../src/context/AuthContext";
+import {
   subscribeToStations,
   type FirestoreStation,
 } from "../../lib/rentalFlow";
