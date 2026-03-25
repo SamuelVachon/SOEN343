@@ -9,7 +9,7 @@ import {
   addBikeToStation,
   removeBikeFromStation,
 } from "../services/stationInventory";
-import { useAuth } from "../../src/context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
 import {
   subscribeToStations,
   type FirestoreStation,

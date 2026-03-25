@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../src/context/AuthContext";
+import { useAuth } from "../context/AuthContext";
 import Link from "next/link";
 import SignOutButton from "../Components/SignOutButton";
 import {

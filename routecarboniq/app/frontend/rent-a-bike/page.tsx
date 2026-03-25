@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRideElapsedTimer } from "./hooks/useRideElapsedTimer";
 import { useStationsData } from "./hooks/useStationsData";
 import { subscribeToAdminAccess } from "../lib/adminAccess";
-import { useAuth } from "../src/context/AuthContext";
+import { useAuth } from "../context/AuthContext";
 import {
   completeRental,
   createRental,

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import type firebase from "firebase/compat/app";
-import { auth } from "../../lib/firebaseClient";
+import { auth } from "../lib/firebaseClient";
 
 type AuthContextType = {
   user: firebase.User | null;
