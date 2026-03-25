@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Leaf, Search, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useRideElapsedTimer } from "./hooks/useRideElapsedTimer";
 import { useStationsData } from "./hooks/useStationsData";
@@ -422,15 +422,6 @@ export default function BixiMap() {
           gap: 12,
         }}
       >
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/90 text-white shadow-lg shadow-emerald-200/50">
-            <Leaf size={16} fill="currentColor" />
-          </div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">
-            Route<span className="text-emerald-500/80">Carbon</span>IQ
-          </p>
-        </div>
-
         <div style={{ display: "flex", gap: 24 }}>
           {[
             { label: "Bikes", val: totalBikes, color: "#16a34a" },
@@ -503,9 +494,10 @@ export default function BixiMap() {
         style={{
           position: "absolute",
           top: 80,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "90%",
+          right: 24,
+          left: "auto",
+          transform: "none",
+          width: "min(420px, calc(100% - 48px))",
           height: "48px",
           zIndex: 1000,
           display: "flex",
@@ -555,9 +547,10 @@ export default function BixiMap() {
           style={{
             position: "absolute",
             top: 136,
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "90%",
+            right: 24,
+            left: "auto",
+            transform: "none",
+            width: "min(420px, calc(100% - 48px))",
             zIndex: 999,
             background: "white",
             borderRadius: "12px",

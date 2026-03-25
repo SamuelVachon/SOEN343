@@ -3,8 +3,6 @@
 import {useEffect, useState} from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
-import { Leaf} from "lucide-react";
-import Form from 'next/form'
 
 
 
@@ -46,14 +44,6 @@ export default function STMPage() {
             gap: 12,
           }}
         >
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/90 text-white shadow-lg shadow-emerald-200/50">
-              <Leaf size={16} fill="currentColor" />
-            </div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">
-              Route<span className="text-emerald-500/80">Carbon</span>IQ
-            </p>
-          </div>
           <form onSubmit={(e) => {setOrigin(e.target.origin.value); setDestination(e.target.destination.value); e.preventDefault();}}>
           <input name="origin" placeholder="Enter your starting point" />
           <input name="destination" placeholder="Enter your destination" />
@@ -89,7 +79,7 @@ export default function STMPage() {
           referrerPolicy="no-referrer-when-downgrade"
           src={origin && destination ? 
             `https://www.google.com/maps/embed/v1/directions?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&origin=${origin}&destination=${destination}&mode=transit` :
-            `https://www.google.com/maps/embed/v1/search?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=public+transit+near+${user.location}`}
+            `https://www.google.com/maps/embed/v1/search?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=public+transit+near+Montreal`}
           allowFullScreen>
         </iframe>
       </div>
