@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Minus, Plus, Settings2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { subscribeToAdminAccess } from "../../lib/adminAccess";
+import { subscribeToAdminAccess } from "../../../lib/adminAccess";
 import {
   addBikeToStation,
   removeBikeFromStation,
 } from "../services/stationInventory";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../../context/AuthContext";
 import {
   subscribeToStations,
   type FirestoreStation,

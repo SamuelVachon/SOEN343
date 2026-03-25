@@ -5,8 +5,8 @@ import { Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useRideElapsedTimer } from "./hooks/useRideElapsedTimer";
 import { useStationsData } from "./hooks/useStationsData";
-import { subscribeToAdminAccess } from "../lib/adminAccess";
-import { useAuth } from "../context/AuthContext";
+import { subscribeToAdminAccess } from "../../lib/adminAccess";
+import { useAuth } from "../../context/AuthContext";
 import {
   completeRental,
   createRental,
