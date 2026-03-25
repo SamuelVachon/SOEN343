@@ -16,25 +16,25 @@ import {
 const navItems = [
   {
     label: "Bixi",
-    href: "/frontend/rent-a-bike",
+    href: "/frontend/pages/rent-a-bike",
     icon: Bike,
     iconClass: "bg-rose-400 text-white shadow-lg shadow-rose-100",
   },
   {
     label: "STM",
-    href: "/frontend/stm",
+    href: "/frontend/pages/stm",
     icon: Bus,
     iconClass: "bg-sky-400 text-white shadow-lg shadow-sky-100",
   },
   {
     label: "Parking",
-    href: "/frontend/parking",
+    href: "/frontend/pages/parking",
     icon: CarFront,
     iconClass: "bg-slate-700 text-white shadow-lg shadow-slate-100",
   },
   {
     label: "Analytics",
-    href: "/frontend/dashboard",
+    href: "/frontend/pages/dashboard",
     icon: ChartLine,
     iconClass: "bg-emerald-400 text-white shadow-lg shadow-emerald-100",
   },
@@ -48,7 +48,7 @@ export default function FrontendLayout({
   const pathname = usePathname();
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
-  if (pathname === "/frontend/login" || pathname === "/frontend/home") {
+  if (pathname === "/frontend/login" || pathname === "/frontend/pages/home") {
     return <>{children}</>;
   }
 
@@ -62,7 +62,7 @@ export default function FrontendLayout({
       >
         <div className="mb-6 flex items-center justify-between gap-2">
           <Link
-            href="/frontend/home"
+            href="/frontend/pages/home"
             className="flex items-center gap-2"
             title="Go to home"
           >
