@@ -44,12 +44,15 @@ export default function STMPage() {
             gap: 12,
           }}
         >
-          <form onSubmit={(e) => {setOrigin(e.target.origin.value); setDestination(e.target.destination.value); e.preventDefault();}}>
-          <input name="origin" placeholder="Enter your starting point" />
-          <input name="destination" placeholder="Enter your destination" />
+          <div style={{ alignContent: "right", width: "100%", display: "flex", justifyContent: "flex-end" }}>
+            <form onSubmit={(e) => {setOrigin(e.target.origin.value); setDestination(e.target.destination.value); e.preventDefault();}}>
+            <input name="origin" placeholder="Enter your starting point" />
+            <input name="destination" placeholder="Enter your destination" />
+            
 
-          <button type="submit" style={{marginLeft: 8, padding: "6px 12px", background: "#10b981", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer"}}>Search</button>
-          </form>
+            <button type="submit" style={{marginLeft: 8, padding: "6px 12px", background: "#10b981", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer"}}>Search</button>
+            </form>
+          </div>
           
         </div>
   

@@ -38,6 +38,7 @@ export default function STMPage() {
           gap: 12,
         }}
       >
+        <div style={{ alignContent: "right", width: "100%", display: "flex", justifyContent: "flex-end" }}>
         <form
           onSubmit={(e) => {
             setAddress(e.target.address.value);
@@ -60,6 +61,7 @@ export default function STMPage() {
             Search
           </button>
         </form>
+        </div>
       </div>
 
       {/* Map */}
