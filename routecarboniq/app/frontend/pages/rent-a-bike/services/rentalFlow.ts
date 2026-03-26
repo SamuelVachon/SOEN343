@@ -1,4 +1,5 @@
 import { db } from "../../../lib/firebaseClient";
+import { AnalyticsService } from "../../../services/AnalyticsService";
 
 const RENTALS_COLLECTION = "rentals";
 const STATIONS_COLLECTION = "stations";
@@ -151,6 +152,7 @@ export async function createRental(input: CreateRentalInput) {
   };
 
   const createdAt = new Date();
+  const t0 = Date.now();
   await db.runTransaction(async (transaction) => {
     const stationSnapshot = await transaction.get(stationRef);
     if (!stationSnapshot.exists) {
@@ -171,6 +173,11 @@ export async function createRental(input: CreateRentalInput) {
       availableDocks: availableDocks + 1,
       updatedAt: createdAt,
     });
+  });
+  AnalyticsService.getInstance().trackEvent("API_REQUEST_COMPLETED", {
+    latencyMs: Date.now() - t0,
+    endpoint: "Rent a bike",
+    startStation: input.startStationName,
   });
 
   return {
@@ -212,6 +219,7 @@ export async function completeRental(input: CompleteRentalInput) {
     .collection(STATIONS_COLLECTION)
     .doc(input.returnStationId);
 
+  const completeT0 = Date.now();
   await db.runTransaction(async (transaction) => {
     const destinationSnapshot = await transaction.get(destinationStationRef);
     if (!destinationSnapshot.exists) {
@@ -237,6 +245,10 @@ export async function completeRental(input: CompleteRentalInput) {
       availableDocks: Math.max(0, availableDocks - 1),
       updatedAt: returnTime,
     });
+  });
+  AnalyticsService.getInstance().trackEvent("API_REQUEST_COMPLETED", {
+    latencyMs: Date.now() - completeT0,
+    endpoint: "Return a bike Check-out",
   });
 
   return {

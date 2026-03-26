@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
+import { AnalyticsService } from "../../services/AnalyticsService";
 
-export default function STMPage() {
+export default function ParkingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [address, setAddress] = useState("Concondia University, Montreal, QC");
@@ -41,8 +42,17 @@ export default function STMPage() {
         <div style={{ alignContent: "right", width: "100%", display: "flex", justifyContent: "flex-end" }}>
         <form
           onSubmit={(e) => {
-            setAddress(e.target.address.value);
             e.preventDefault();
+            const target = e.target as typeof e.target & {
+              address: { value: string };
+            };
+            setAddress(target.address.value);
+            
+            // Track Google Maps Places API interaction
+            AnalyticsService.getInstance().trackEvent("API_REQUEST_COMPLETED", {
+              latencyMs: 120, // simulated iframe latency
+              endpoint: "Google Maps Parking Search",
+            });
           }}
         >
           <input name="address" placeholder="Enter your destination" />

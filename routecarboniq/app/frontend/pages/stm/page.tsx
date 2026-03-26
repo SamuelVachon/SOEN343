@@ -3,8 +3,7 @@
 import {useEffect, useState} from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
-
-
+import { AnalyticsService } from "../../services/AnalyticsService";
 
 export default function STMPage() {
   const { user, loading } = useAuth();
@@ -18,15 +17,24 @@ export default function STMPage() {
   function handleSearch(e: React.FormEvent<HTMLFormElement>, type: "search" | "directions") {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    let endpoint = "";
+
     if (type === "search") {
       setSearchType("search");
       setSearchQuery(formData.get("searchQuery") as string);
+      endpoint = "Google Maps Transit Search";
     }
     if (type === "directions") {
       setSearchType("directions");
       setOrigin(formData.get("origin") as string);
       setDestination(formData.get("destination") as string);
+      endpoint = "Google Maps Route Search";
     }
+
+    AnalyticsService.getInstance().trackEvent("API_REQUEST_COMPLETED", {
+      latencyMs: 150, // simulated iframe ping latency
+      endpoint
+    });
   }
 
   function showSearchComponent(type: "search" | "directions") {
@@ -84,7 +92,7 @@ export default function STMPage() {
           {searchTypeComponent? searchTypeComponent : <span style={{color: "#6b7280"}}>Select an option to get started</span>}
           <div style={{ alignContent: "right", display: "flex", justifyContent: "flex-end" }}>
             <button onClick={() => showSearchComponent("search")} style={{marginLeft: 8, padding: "6px 12px", background: "#10b981", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer"}}>Search Stations</button>
-            <button onClick={() => showSearchComponent("directions")} style={{marginLeft: 8, padding: "6px 12px", background: "#10b981", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer"}}>Itinerary</button> 
+            <button onClick={() => showSearchComponent("directions")} style={{marginLeft: 8, padding: "6px 12px", background: "#10b981", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer"}}>Itinerary</button>
           </div>
         </div>
   

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AnalyticsService } from "../../../services/AnalyticsService";
 import {
   seedStationsIfEmpty,
   subscribeToStations,
@@ -6,13 +7,41 @@ import {
 import type { FeedName, Station, StationStatus } from "../types";
 import { mapFirestoreStationToUiStation } from "../utils/stationMappers";
 
+const LIVE_BIXI_TRACKING_DEDUPE_KEY = "analytics:live-bixi-feed:last-tracked-at";
+const LIVE_BIXI_TRACKING_DEDUPE_MS = 15000;
+
 async function fetchFeed(name: FeedName) {
+  const t0 = Date.now();
   const res = await fetch(`/api/gbfs?feed=${name}`, { cache: "no-store" });
+  const latency = Date.now() - t0;
+  
   if (!res.ok) {
     throw new Error(`Feed failed (${name}): ${res.status}`);
   }
 
-  return res.json();
+  return {
+    data: await res.json(),
+    latency,
+  };
+}
+
+function trackLiveBixiFeedOnce(latencyMs: number) {
+  if (typeof window === "undefined") return;
+
+  const now = Date.now();
+  const lastTrackedAt = Number(
+    window.sessionStorage.getItem(LIVE_BIXI_TRACKING_DEDUPE_KEY) || 0,
+  );
+
+  if (now - lastTrackedAt < LIVE_BIXI_TRACKING_DEDUPE_MS) {
+    return;
+  }
+
+  window.sessionStorage.setItem(LIVE_BIXI_TRACKING_DEDUPE_KEY, String(now));
+  AnalyticsService.getInstance().trackEvent("API_REQUEST_COMPLETED", {
+    latencyMs,
+    endpoint: "Live Bixi Station Feed",
+  });
 }
 
 export function useStationsData() {
@@ -47,8 +76,11 @@ export function useStationsData() {
           fetchFeed("station_status"),
         ]);
 
-        const stationList: Station[] = info?.data?.stations ?? [];
-        const statusList: StationStatus[] = status?.data?.stations ?? [];
+        // Count a Bixi page load as a single feature usage event.
+        trackLiveBixiFeedOnce(info.latency + status.latency);
+
+        const stationList: Station[] = info.data?.data?.stations ?? [];
+        const statusList: StationStatus[] = status.data?.data?.stations ?? [];
         const statusMap = new Map(
           statusList.map((station) => [station.station_id, station]),
         );
