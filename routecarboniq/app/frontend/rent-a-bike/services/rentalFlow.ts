@@ -2,7 +2,6 @@ import { db } from "../../lib/firebaseClient";
 
 const RENTALS_COLLECTION = "rentals";
 const STATIONS_COLLECTION = "stations";
-const SESSION_STORAGE_KEY = "routecarboniq-rental-user-key";
 
 export type RentalStatus = "active" | "completed";
 
@@ -48,7 +47,7 @@ interface SeedStationInput {
 
 interface CreateRentalInput {
   userKey: string;
-  userId: string | null;
+  userId: string;
   userEmail: string | null;
   startStationId: string;
   startStationName: string;
@@ -60,21 +59,6 @@ interface CompleteRentalInput {
   rentalId: string;
   returnStationId: string;
   returnStationName: string;
-}
-
-export function getOrCreateRentalUserKey() {
-  if (typeof window === "undefined") {
-    return "server";
-  }
-
-  const existing = window.localStorage.getItem(SESSION_STORAGE_KEY);
-  if (existing) {
-    return existing;
-  }
-
-  const generated = window.crypto?.randomUUID?.() ?? `session-${Date.now()}`;
-  window.localStorage.setItem(SESSION_STORAGE_KEY, generated);
-  return generated;
 }
 
 export function subscribeToStations(
@@ -137,6 +121,10 @@ export function subscribeToOpenRental(
 }
 
 export async function createRental(input: CreateRentalInput) {
+  if (!input.userId) {
+    throw new Error("Authentication required to create a rental.");
+  }
+
   const rentalRef = db.collection(RENTALS_COLLECTION).doc();
   const stationRef = db
     .collection(STATIONS_COLLECTION)

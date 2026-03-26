@@ -10,7 +10,6 @@ import { useAuth } from "../context/AuthContext";
 import {
   completeRental,
   createRental,
-  getOrCreateRentalUserKey,
   startRide,
   subscribeToOpenRental,
   timestampToMillis,
@@ -62,9 +61,6 @@ declare global {
 
 export default function BixiMap() {
   const { user } = useAuth();
-  const [guestRentalUserKey] = useState(() =>
-    typeof window === "undefined" ? null : getOrCreateRentalUserKey(),
-  );
   const [canManageBikes, setCanManageBikes] = useState(false);
   const { stations, loading, lastUpdated } = useStationsData();
   const [searchQuery, setSearchQuery] = useState("");
@@ -87,7 +83,7 @@ export default function BixiMap() {
   const leafletMapRef = useRef<LeafletMapInstance | null>(null);
   const markersRef = useRef<Map<string, LeafletMarkerInstance>>(new Map());
 
-  const rentalUserKey = user?.uid ? `user:${user.uid}` : guestRentalUserKey;
+  const rentalUserKey = user?.uid ? `user:${user.uid}` : null;
   const actualRideDurationMinutes = activeRental
     ? Math.max(
         1,
@@ -135,6 +131,11 @@ export default function BixiMap() {
 
   useEffect(() => {
     window.triggerReserve = (name: string, stationId: string) => {
+      if (!user?.uid) {
+        setErrorMessage("Please sign in to reserve a bike.");
+        return;
+      }
+
       if (activeRental) {
         setReservationStep("active");
         return;
@@ -152,7 +153,7 @@ export default function BixiMap() {
     return () => {
       delete window.triggerReserve;
     };
-  }, [activeRental]);
+  }, [activeRental, user?.uid]);
 
   // Init map once
   useEffect(() => {
@@ -204,7 +205,7 @@ export default function BixiMap() {
       if (!s.lat || !s.lon) return;
       const bikes = s.num_bikes_available ?? 0;
       const docks = s.num_docks_available ?? 0;
-      const canReserve = bikes > 0 && !activeRental;
+      const canReserve = bikes > 0 && !activeRental && Boolean(user?.uid);
 
       const color = bikes > 5 ? "#16a34a" : bikes > 0 ? "#ea580c" : "#9ca3af";
 
@@ -246,14 +247,14 @@ export default function BixiMap() {
             "
             ${canReserve ? `onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'"` : ""}
           >
-            ${activeRental ? "Ride In Progress" : canReserve ? "Reserve Bike" : "No Bikes Available"}
+            ${activeRental ? "Ride In Progress" : !user?.uid ? "Sign In to Rent" : canReserve ? "Reserve Bike" : "No Bikes Available"}
           </button>
         </div>
       `);
 
       markersRef.current.set(s.station_id, marker);
     });
-  }, [activeRental, stations]);
+  }, [activeRental, stations, user?.uid]);
 
   const totalBikes = stations.reduce(
     (total, station) => total + (station.num_bikes_available ?? 0),
@@ -266,7 +267,7 @@ export default function BixiMap() {
   );
 
   const handleConfirmReservation = async () => {
-    if (!selectedStationId || !rentalUserKey) {
+    if (!user?.uid || !selectedStationId || !rentalUserKey) {
       setErrorMessage("Unable to start the rental right now.");
       return;
     }
@@ -286,7 +287,7 @@ export default function BixiMap() {
 
       const rental = await createRental({
         userKey: rentalUserKey,
-        userId: user?.uid ?? null,
+        userId: user.uid,
         userEmail: user?.email ?? null,
         startStationId: selectedStationId,
         startStationName: selectedStationName,
