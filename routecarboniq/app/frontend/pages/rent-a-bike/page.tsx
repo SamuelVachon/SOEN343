@@ -104,27 +104,31 @@ export default function BixiMap() {
   }, [user?.uid]);
 
   useEffect(() => {
-    if (!rentalUserKey) {
+    if (!rentalUserKey || !user?.uid) {
       return;
     }
 
-    const unsubscribe = subscribeToOpenRental(rentalUserKey, (rental) => {
-      setActiveRental(rental);
+    const unsubscribe = subscribeToOpenRental(
+      rentalUserKey,
+      user.uid,
+      (rental) => {
+        setActiveRental(rental);
 
-      if (!rental) {
-        if (reservationStep === "active" || reservationStep === "returning") {
-          setReservationStep("idle");
+        if (!rental) {
+          if (reservationStep === "active" || reservationStep === "returning") {
+            setReservationStep("idle");
+          }
+          return;
         }
-        return;
-      }
 
-      setSelectedStationId(rental.startStationId);
-      setSelectedStationName(rental.startStationName);
+        setSelectedStationId(rental.startStationId);
+        setSelectedStationName(rental.startStationName);
 
-      if (reservationStep === "idle") {
-        setReservationStep("active");
-      }
-    });
+        if (reservationStep === "idle") {
+          setReservationStep("active");
+        }
+      },
+    );
 
     return () => unsubscribe();
   }, [rentalUserKey, reservationStep]);

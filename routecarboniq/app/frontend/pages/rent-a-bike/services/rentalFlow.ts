@@ -102,22 +102,30 @@ export async function seedStationsIfEmpty(stations: SeedStationInput[]) {
 
 export function subscribeToOpenRental(
   userKey: string,
+  userId: string,
   callback: (rental: RentalRecord | null) => void,
 ) {
   return db
     .collection(RENTALS_COLLECTION)
+    .where("userId", "==", userId)
     .where("userKey", "==", userKey)
     .where("isOpen", "==", true)
     .limit(1)
-    .onSnapshot((snapshot) => {
-      if (snapshot.empty) {
-        callback(null);
-        return;
-      }
+    .onSnapshot(
+      (snapshot) => {
+        if (snapshot.empty) {
+          callback(null);
+          return;
+        }
 
-      const doc = snapshot.docs[0];
-      callback({ id: doc.id, ...(doc.data() as Omit<RentalRecord, "id">) });
-    });
+        const doc = snapshot.docs[0];
+        callback({ id: doc.id, ...(doc.data() as Omit<RentalRecord, "id">) });
+      },
+      (_error) => {
+        // permission-denied: treat as no open rental
+        callback(null);
+      },
+    );
 }
 
 export async function createRental(input: CreateRentalInput) {
