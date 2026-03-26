@@ -52,7 +52,7 @@ export default function DashboardPage() {
   // Auth and redirect
   useEffect(() => {
     if (!loading && !user) {
-      router.replace("/frontend/login");
+      router.replace("/");
     }
   }, [loading, user, router]);
 

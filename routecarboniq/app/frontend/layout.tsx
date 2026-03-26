@@ -64,7 +64,7 @@ export default function FrontendLayout({
     return () => unsubscribe();
   }, [user]);
 
-  if (pathname === "/frontend/login" || pathname === "/frontend/pages/home") {
+  if (pathname === "/frontend/pages/home") {
     return <>{children}</>;
   }
 

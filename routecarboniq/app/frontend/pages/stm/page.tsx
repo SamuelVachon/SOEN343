@@ -78,7 +78,7 @@ export default function STMPage() {
 
 
   useEffect(() => {
-    if (!loading && !user) router.replace("/frontend/login");
+    if (!loading && !user) router.replace("/");
   }, [loading, user, router]);
 
   if (loading) return <p>Loading...</p>;
