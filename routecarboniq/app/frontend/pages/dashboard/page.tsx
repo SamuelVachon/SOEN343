@@ -52,7 +52,7 @@ export default function DashboardPage() {
   // Auth and redirect
   useEffect(() => {
     if (!loading && !user) {
-      router.replace("/frontend/login");
+      router.replace("/");
     }
   }, [loading, user, router]);
 
@@ -105,12 +105,12 @@ export default function DashboardPage() {
   if (!user) return null;
 
   return (
-    <div className="relative h-screen w-full overflow-hidden flex flex-col bg-slate-50 px-4 sm:px-6 font-sans">
+    <div className="relative min-h-screen w-full overflow-y-auto overflow-x-hidden flex flex-col bg-slate-50 px-4 sm:px-6 font-sans">
       {/* Animated Background Details */}
-      <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-emerald-200/20 blur-[100px] animate-pulse pointer-events-none" />
+      <div className="absolute top-0 -left-24 h-96 w-96 rounded-full bg-emerald-200/20 blur-[100px] animate-pulse pointer-events-none" />
       <div className="absolute top-1/2 -right-24 h-80 w-80 rounded-full bg-blue-100/20 blur-[100px] animate-pulse [animation-delay:2s] pointer-events-none" />
 
-      <main className="relative z-10 flex flex-col justify-center flex-1 mx-auto w-full max-w-6xl">
+      <main className="relative z-10 flex flex-col justify-start py-8 flex-1 mx-auto w-full max-w-6xl">
         <div className="mb-8 flex flex-col items-center justify-center text-center gap-2">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 shadow-sm border border-emerald-200">
             <LineChart size={28} />

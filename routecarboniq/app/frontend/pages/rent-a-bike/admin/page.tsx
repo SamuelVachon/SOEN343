@@ -52,7 +52,7 @@ export default function BikeAdminPage() {
     }
 
     if (!user) {
-      router.replace("/frontend/login");
+      router.replace("/");
       return;
     }
 

@@ -14,6 +14,20 @@ export default function STMPage() {
   const [destination, setDestination] = useState("");
   const [searchTypeComponent, setActiveSearchComponent] = useState<React.ReactNode>(null);
   
+  const [embedUrl, setEmbedUrl] = useState("");
+
+  const updateMapUrl = async (params: Record<string, string>) => {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetch(`/api/maps/embed-url?${query}`);
+    const data = await res.json();
+    setEmbedUrl(data.url);
+  };
+
+  useEffect(() => {
+    // Initial map load
+    updateMapUrl({ type: 'search', q: 'Public Transit near Concordia University' });
+  }, []);
+
   function handleSearch(e: React.FormEvent<HTMLFormElement>, type: "search" | "directions") {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -21,13 +35,18 @@ export default function STMPage() {
 
     if (type === "search") {
       setSearchType("search");
-      setSearchQuery(formData.get("searchQuery") as string);
+      const q = formData.get("searchQuery") as string;
+      setSearchQuery(q);
+      updateMapUrl({ type: 'search', q: `Public Transit near ${q}` });
       endpoint = "Google Maps Transit Search";
     }
     if (type === "directions") {
       setSearchType("directions");
-      setOrigin(formData.get("origin") as string);
-      setDestination(formData.get("destination") as string);
+      const ori = formData.get("origin") as string;
+      const des = formData.get("destination") as string;
+      setOrigin(ori);
+      setDestination(des);
+      updateMapUrl({ type: 'directions', origin: ori, destination: des, mode: 'transit' });
       endpoint = "Google Maps Route Search";
     }
 
@@ -59,7 +78,7 @@ export default function STMPage() {
 
 
   useEffect(() => {
-    if (!loading && !user) router.replace("/frontend/login");
+    if (!loading && !user) router.replace("/");
   }, [loading, user, router]);
 
   if (loading) return <p>Loading...</p>;
@@ -114,17 +133,17 @@ export default function STMPage() {
             Loading STM...
           </div>
         )}
-        <iframe
-          width="100%"
-          height="100%"
-          frameBorder="0"
-          style={{ border: 0}}
-          referrerPolicy="no-referrer-when-downgrade"
-          src={searchType === "directions" ? 
-            `https://www.google.com/maps/embed/v1/directions?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&origin=${origin}&destination=${destination}&mode=transit` :
-            `https://www.google.com/maps/embed/v1/search?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${searchQuery ? `Public Transit near ${searchQuery}` : 'Public Transit near Concordia University'}`}
-          allowFullScreen>
-        </iframe>
+        {embedUrl && (
+          <iframe
+            width="100%"
+            height="100%"
+            frameBorder="0"
+            style={{ border: 0}}
+            referrerPolicy="no-referrer-when-downgrade"
+            src={embedUrl}
+            allowFullScreen>
+          </iframe>
+        )}
       </div>
   );
 }
