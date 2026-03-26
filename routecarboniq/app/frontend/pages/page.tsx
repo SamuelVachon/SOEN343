@@ -1,6 +1,6 @@
 import { Sign } from "crypto";
 import Link from "next/link";
-import SignOutButton from "../frontend/Components/SignOutButton";
+import SignOutButton from "../Components/SignOutButton";
 export default function Home() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-white">
@@ -18,13 +18,13 @@ export default function Home() {
         <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
           <Link
             className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="/frontend/rent-a-bike"
+            href="/frontend/pages/rent-a-bike"
           >
             Rent a Bike
           </Link>
           <Link
             className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="/frontend/dashboard"
+            href="/frontend/pages/dashboard"
           >
             Dashboard
           </Link>

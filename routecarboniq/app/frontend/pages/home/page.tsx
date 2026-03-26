@@ -2,16 +2,16 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
 import Link from "next/link";
-import SignOutButton from "../Components/SignOutButton";
+import SignOutButton from "../../Components/SignOutButton";
 import {
   Bike,
   Bus,
   CarFront,
   ChartLine,
-  MoveRight,
   Leaf,
+  MoveRight,
   MapPin,
 } from "lucide-react";
 
@@ -89,7 +89,7 @@ export default function Home() {
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {/* BIXI Container */}
           <Link
-            href="/frontend/rent-a-bike"
+            href="/frontend/pages/rent-a-bike"
             className="group relative flex flex-col justify-between overflow-hidden rounded-[2.5rem] border border-slate-200/60 bg-white/70 p-8 shadow-xl shadow-slate-300/50 backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1 hover:bg-white/90"
           >
             <div>
@@ -112,7 +112,7 @@ export default function Home() {
 
           {/* STM Container */}
           <Link
-            href="/frontend/stm"
+            href="/frontend/pages/stm"
             className="group relative flex flex-col justify-between overflow-hidden rounded-[2.5rem] border border-slate-200/60 bg-white/70 p-8 shadow-xl shadow-slate-300/50 backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1 hover:bg-white/90"
           >
             <div>
@@ -135,7 +135,7 @@ export default function Home() {
 
           {/* Parking Container */}
           <Link
-            href="/frontend/Parking"
+            href="/frontend/pages/parking"
             className="group relative flex flex-col justify-between overflow-hidden rounded-[2.5rem] border border-slate-200/60 bg-white/70 p-8 shadow-xl shadow-slate-300/50 backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1 hover:bg-white/90"
           >
             <div>
@@ -158,7 +158,7 @@ export default function Home() {
 
           {/* Analytics Container */}
           <Link
-            href="/frontend/dashboard"
+            href="/frontend/pages/dashboard"
             className="group relative flex flex-col justify-between overflow-hidden rounded-[2.5rem] border border-slate-200/60 bg-white/70 p-8 shadow-xl shadow-slate-300/50 backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1 hover:bg-white/90"
           >
             <div>

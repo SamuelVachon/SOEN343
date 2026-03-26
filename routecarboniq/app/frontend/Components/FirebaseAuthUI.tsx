@@ -25,7 +25,7 @@ export default function FirebaseAuthUI() {
       callbacks: {
         // Return false to avoid full-page redirect handled by FirebaseUI
         signInSuccessWithAuthResult: () => {
-          window.location.assign("/frontend/home");
+          window.location.assign("/frontend/pages/home");
           return false;
         },
       },

@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../context/AuthContext";
-import { Leaf } from "lucide-react";
-import Form from "next/form";
+import { useAuth } from "../../context/AuthContext";
 
 export default function STMPage() {
   const { user, loading } = useAuth();
@@ -40,14 +38,7 @@ export default function STMPage() {
           gap: 12,
         }}
       >
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/90 text-white shadow-lg shadow-emerald-200/50">
-            <Leaf size={16} fill="currentColor" />
-          </div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">
-            Route<span className="text-emerald-500/80">Carbon</span>IQ
-          </p>
-        </div>
+        <div style={{ alignContent: "right", width: "100%", display: "flex", justifyContent: "flex-end" }}>
         <form
           onSubmit={(e) => {
             setAddress(e.target.address.value);
@@ -70,6 +61,7 @@ export default function STMPage() {
             Search
           </button>
         </form>
+        </div>
       </div>
 
       {/* Map */}

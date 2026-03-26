@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Minus, Plus, Settings2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { subscribeToAdminAccess } from "../../lib/adminAccess";
+import { subscribeToAdminAccess } from "../../../lib/adminAccess";
 import {
   addBikeToStation,
   removeBikeFromStation,
 } from "../services/stationInventory";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../../context/AuthContext";
 import {
   subscribeToStations,
   type FirestoreStation,
@@ -57,7 +57,7 @@ export default function BikeAdminPage() {
     }
 
     if (!isAdmin) {
-      router.replace("/frontend/rent-a-bike");
+      router.replace("/frontend/pages/rent-a-bike");
     }
   }, [adminLoading, authLoading, isAdmin, router, user]);
 
@@ -141,7 +141,7 @@ export default function BikeAdminPage() {
           </div>
 
           <Link
-            href="/frontend/rent-a-bike"
+            href="/frontend/pages/rent-a-bike"
             className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
           >
             <ArrowLeft size={16} />
