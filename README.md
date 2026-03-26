@@ -18,6 +18,11 @@ This project asks students to develop a modern prototype urban transportation ap
 
 
 **Features:**
++ Authentication Service: Firebase Auth manages user sessions and specific signup/logins.
++ Transit Integration Service: Fetches, parses and caches real-time data from public transportation service providers.
++ Micromobility & Parking Service: Connects to BIXI and parking sensor APIs, providing live availability, vehicle status and rental status.
++ CarbonIQ Calculation Engine: Specialized service that applies a standardized environmental algorithm that determines the CO2 impact of routes depending on distance and mode.
++ Analytics & Admin Dashboard: Processes historical and real-time data to generate sustainability reports, more detailed reports for admins.
 
 
 
