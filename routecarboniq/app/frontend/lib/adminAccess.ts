@@ -14,7 +14,13 @@ export function subscribeToAdminAccess(
   return db
     .collection(ADMINS_COLLECTION)
     .doc(uid)
-    .onSnapshot((snapshot) => {
-      callback(snapshot.exists);
-    });
+    .onSnapshot(
+      (snapshot) => {
+        callback(snapshot.exists);
+      },
+      (_error) => {
+        // permission-denied means the user is not in the admins collection
+        callback(false);
+      },
+    );
 }
