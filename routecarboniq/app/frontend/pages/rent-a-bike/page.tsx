@@ -7,6 +7,7 @@ import { useRideElapsedTimer } from "./hooks/useRideElapsedTimer";
 import { useStationsData } from "./hooks/useStationsData";
 import { subscribeToAdminAccess } from "../../lib/adminAccess";
 import { useAuth } from "../../context/AuthContext";
+import { AnalyticsService } from "../../services/AnalyticsService";
 import {
   completeRental,
   createRental,
@@ -352,6 +353,17 @@ export default function BixiMap() {
         returnStationId,
         returnStationName: returnStation.name,
       });
+
+      if (user) {
+        AnalyticsService.getInstance().trackEvent("RIDE_COMPLETED", {
+          userId: user.uid,
+          rideDuration: result.actualDurationMinutes,
+          rideCost: result.finalCharge,
+          carbonSaved: result.actualDurationMinutes * 0.5, // 0.5 kg CO2 per min estimated
+          startStation: selectedStationName,
+          endStation: returnStation.name,
+        });
+      }
 
       setCompletedRental({
         returnStationName: returnStation.name,

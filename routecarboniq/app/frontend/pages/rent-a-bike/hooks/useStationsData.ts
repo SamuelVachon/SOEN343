@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AnalyticsService } from "../../../services/AnalyticsService";
 import {
   seedStationsIfEmpty,
   subscribeToStations,
@@ -7,10 +8,18 @@ import type { FeedName, Station, StationStatus } from "../types";
 import { mapFirestoreStationToUiStation } from "../utils/stationMappers";
 
 async function fetchFeed(name: FeedName) {
+  const t0 = Date.now();
   const res = await fetch(`/api/gbfs?feed=${name}`, { cache: "no-store" });
+  const latency = Date.now() - t0;
+  
   if (!res.ok) {
     throw new Error(`Feed failed (${name}): ${res.status}`);
   }
+
+  AnalyticsService.getInstance().trackEvent("API_REQUEST_COMPLETED", {
+    latencyMs: latency,
+    endpoint: `Live Bixi Station Feed`,
+  });
 
   return res.json();
 }
