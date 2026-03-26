@@ -37,13 +37,11 @@ export async function POST(req: Request) {
               totalMoneySpent: firebase.firestore.FieldValue.increment(eventData.cost || eventData.rideCost || 0)
             }, { merge: true });
           }
-          
-          const stationMapKey = `stationUsageMap.${eventData.stationId || 'unknown'}`;
+
           await globalRef.set({
-            totalRides: firebase.firestore.FieldValue.increment(1),
-            totalRevenue: firebase.firestore.FieldValue.increment(eventData.cost || eventData.rideCost || 0),
-            totalRideDuration: firebase.firestore.FieldValue.increment(eventData.rideDuration || 0),
-            [stationMapKey]: firebase.firestore.FieldValue.increment(1)
+              totalRides: firebase.firestore.FieldValue.increment(1),
+              totalRevenue: firebase.firestore.FieldValue.increment(eventData.cost || eventData.rideCost || 0),
+              totalRideDuration: firebase.firestore.FieldValue.increment(eventData.rideDuration || 0)
           }, { merge: true });
           break;
 
@@ -74,8 +72,24 @@ export async function POST(req: Request) {
               }
             }
           }, { merge: true });
+
+            if (rawEndpoint === 'Rent a bike' && eventData.startStation) {
+              const stationName = String(eventData.startStation).trim() || 'Unknown Station';
+
+              await db.runTransaction(async (transaction) => {
+                const globalSnap = await transaction.get(globalRef);
+                const existingData = globalSnap.data() || {};
+                const stationUsageMap: Record<string, number> = {
+                  ...(existingData.stationUsageMap || {})
+                };
+
+                stationUsageMap[stationName] = (stationUsageMap[stationName] || 0) + 1;
+
+                transaction.set(globalRef, { stationUsageMap }, { merge: true });
+              });
+            }
           break;
-          
+
         default:
           console.warn('Unknown event received in Analytics Microservice:', eventName);
           break;
@@ -83,7 +97,6 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ success: true, message: 'Analytics processed' }, { status: 200 });
-
   } catch (error) {
     console.error('Analytics Backend Error:', error);
     return NextResponse.json({ error: 'Internal server error while processing analytics' }, { status: 500 });

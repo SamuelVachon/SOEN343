@@ -25,13 +25,23 @@ export async function GET() {
 
     // Optionally calculate dynamic fields like average ride duration
     const apiMetricsProcessed: Record<string, number> = {};
-    
+    const apiEndpointCounts: Record<string, number> = {};
+    const stationUsageMapProcessed: Record<string, number> = {
+      ...(data.stationUsageMap || {})
+    };
+    const excludedFeatureEndpoints = new Set([
+      'Return a bike Check-out',
+      'Return_a_bike_Check_out'
+    ]);
+
     // Check for nested properly formatted metrics
     if (data.apiMetrics) {
       for (const endpoint in data.apiMetrics) {
+        if (excludedFeatureEndpoints.has(endpoint)) continue;
         const stats = data.apiMetrics[endpoint];
         if (stats && stats.count > 0) {
           apiMetricsProcessed[endpoint] = Math.round(stats.totalTime / stats.count);
+          apiEndpointCounts[endpoint] = stats.count;
         }
       }
     }
@@ -44,28 +54,54 @@ export async function GET() {
         if (parts.length === 3) {
           const endpoint = parts[1];
           const statType = parts[2]; // count or totalTime
-          
+
+          if (excludedFeatureEndpoints.has(endpoint)) {
+            return;
+          }
+
           if (!apiMetricsProcessed[endpoint]) {
              // Let's just find BOTH keys directly
              const c = data[`apiMetrics.${endpoint}.count`] || 0;
              const t = data[`apiMetrics.${endpoint}.totalTime`] || 0;
              if (c > 0) {
                apiMetricsProcessed[endpoint] = Math.round(t / c);
+               apiEndpointCounts[endpoint] = c;
              }
           }
         }
       }
+
+      // Backward compatibility for previously stored flat stationUsageMap keys,
+      // e.g. "stationUsageMap.Some Station Name": 3
+      if (key.startsWith('stationUsageMap.')) {
+        const stationName = key.slice('stationUsageMap.'.length);
+        const value = Number(data[key] || 0);
+        if (stationName && value > 0) {
+          stationUsageMapProcessed[stationName] = (stationUsageMapProcessed[stationName] || 0) + value;
+        }
+      }
     });
+
+    const today = new Date().toISOString().split('T')[0];
+    const dailyActiveUsers = data.dailyActiveUsers || [];
+    const uniqueDauToday = new Set(
+      dailyActiveUsers
+        .filter((user: any) => user.date === today)
+        .map((user: any) => user.userId)
+    ).size;
 
     const finalData = {
       ...data,
-      averageRideDuration: data.totalRides > 0 
-        ? Math.round((data.totalRideDuration || 0) / data.totalRides) 
+      stationUsageMap: stationUsageMapProcessed,
+      dailyActiveUsersCount: uniqueDauToday,
+      averageRideDuration: data.totalRides > 0
+        ? Math.round((data.totalRideDuration || 0) / data.totalRides)
         : 0,
       apiResponseTimeAverage: data.totalApiRequests > 0
-        ? Math.round((data.totalApiResponseTime || 0) / data.totalApiRequests)
+        ? Math.round((data.totalApiResponseTime || 0) / data.totalApiRequests)  
         : 0,
-      apiEndpointAverages: apiMetricsProcessed
+      apiEndpointAverages: apiMetricsProcessed,
+      apiEndpointCounts: apiEndpointCounts
     };
 
     return NextResponse.json(finalData, { status: 200 });

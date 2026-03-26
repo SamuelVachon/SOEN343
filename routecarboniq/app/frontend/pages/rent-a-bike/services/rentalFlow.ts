@@ -176,7 +176,8 @@ export async function createRental(input: CreateRentalInput) {
   });
   AnalyticsService.getInstance().trackEvent("API_REQUEST_COMPLETED", {
     latencyMs: Date.now() - t0,
-    endpoint: "Firebase DB Write",
+    endpoint: "Rent a bike",
+    startStation: input.startStationName,
   });
 
   return {
@@ -247,7 +248,7 @@ export async function completeRental(input: CompleteRentalInput) {
   });
   AnalyticsService.getInstance().trackEvent("API_REQUEST_COMPLETED", {
     latencyMs: Date.now() - completeT0,
-    endpoint: "Firebase DB Transaction",
+    endpoint: "Return a bike Check-out",
   });
 
   return {

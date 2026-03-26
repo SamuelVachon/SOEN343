@@ -13,7 +13,11 @@ import {
   Globe2,
   LineChart,
   MonitorSmartphone,
-  ServerCrash
+  ServerCrash,
+  Users,
+  MapPin,
+  TrendingUp,
+  Map
 } from "lucide-react";
 
 interface UserMetrics {
@@ -29,7 +33,10 @@ interface AdminMetrics {
   averageRideDuration: number;
   apiResponseTimeAverage: number;
   apiEndpointAverages?: Record<string, number>;
+  apiEndpointCounts?: Record<string, number>;
   dailyActiveUsers: any[];
+  dailyActiveUsersCount?: number;
+  stationUsageMap?: Record<string, number>;
 }
 
 export default function DashboardPage() {
@@ -111,7 +118,7 @@ export default function DashboardPage() {
           <div className="mb-2">
             <h1 className="text-3xl font-bold text-slate-800">
               {isAdmin 
-                ? (adminViewMode === "admin" ? "Admin Platform Analytics" : "Your Carbon Dashboard (Admin)") 
+                ? (adminViewMode === "admin" ? "Admin Platform Analytics" : "Your Carbon Dashboard") 
                 : "Your Carbon Dashboard"}
             </h1>
             <p className="mt-1 text-sm text-slate-500">
@@ -151,7 +158,7 @@ export default function DashboardPage() {
         {!isAdmin || adminViewMode === "user" ? (
           /* User Stats Section */
           <section className="w-full max-w-3xl mx-auto">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <MetricCard 
                 title="Total Rides" 
                 value={userMetrics?.totalRides || 0} 
@@ -180,13 +187,26 @@ export default function DashboardPage() {
           </section>
         ) : (
           /* Admin Stats Section */
-          <section className="w-full max-w-3xl mx-auto">
-            <div className="grid grid-cols-2 gap-4">
+          <section className="w-full max-w-4xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <MetricCard 
                 title="System Rides" 
                 value={adminMetrics?.totalRides || 0} 
                 icon={<Bike className="h-6 w-6 text-emerald-600" />} 
                 bgColor="bg-emerald-50"
+              />
+              <MetricCard 
+                title="Daily Users" 
+                value={adminMetrics?.dailyActiveUsers?.length || 0} 
+                icon={<Users className="h-6 w-6 text-rose-500" />} 
+                bgColor="bg-rose-50"
+                details={`Total DAU recorded. Today's unique actives: ${adminMetrics?.dailyActiveUsersCount || 0}`}
+              />
+              <MetricCard 
+                title="System Revenue" 
+                value={`$${(adminMetrics?.totalRevenue || 0).toFixed(2)}`} 
+                icon={<TrendingUp className="h-6 w-6 text-amber-500" />} 
+                bgColor="bg-amber-50"
               />
               <MetricCard 
                 title="Avg System Ride" 
@@ -195,13 +215,7 @@ export default function DashboardPage() {
                 bgColor="bg-slate-100"
                 details="The average duration of all completed bike rides taken by all users across the platform."
               />
-              <MetricCard 
-                title="Active Users" 
-                value={adminMetrics?.dailyActiveUsers?.length || 0} 
-                icon={<Activity className="h-6 w-6 text-rose-500" />} 
-                bgColor="bg-rose-50"
-              />
-              <MetricCard 
+              <MetricCard
                 title="API Response Time" 
                 value={`${adminMetrics?.apiResponseTimeAverage || 0} ms`} 
                 icon={<ServerCrash className="h-6 w-6 text-slate-400" />} 
@@ -220,6 +234,22 @@ export default function DashboardPage() {
                     : <div className="border-t border-slate-600 pt-1 mt-1 text-slate-400 italic">No breakdown data yet. Perform some actions!</div>
                 }
               />
+              <MetricCard 
+                title="Top 3 Features" 
+                value={<TopThreeChart data={adminMetrics?.apiEndpointCounts} unit=" reqs" color="bg-cyan-500" />} 
+                icon={<Map className="h-6 w-6 text-cyan-500" />} 
+                bgColor="bg-cyan-50"
+                details="Most frequently called transit or map query features, counting total interactions and API triggers."
+              />
+              <div className="lg:col-span-3">
+                <MetricCard
+                  title="Top 3 Stations"
+                  value={<TopThreeChart data={adminMetrics?.stationUsageMap} unit=" reservations" color="bg-indigo-500" />}
+                  icon={<MapPin className="h-6 w-6 text-indigo-500" />}
+                  bgColor="bg-indigo-50"
+                  details="The top 3 stations that have had the most reservations of a bike."
+                />
+              </div>
             </div>
           </section>
         )}
@@ -228,8 +258,7 @@ export default function DashboardPage() {
   );
 }
 
-// Reusable UI Component for Metrics
-function MetricCard({ title, value, icon, bgColor = "bg-white", details, extraDetails }: { title: string, value: string | number, icon: React.ReactNode, bgColor?: string, details?: string, extraDetails?: React.ReactNode }) {
+function MetricCard({ title, value, icon, bgColor = "bg-white", details, extraDetails }: { title: string, value: React.ReactNode, icon: React.ReactNode, bgColor?: string, details?: string, extraDetails?: React.ReactNode }) {
   const [showDetails, setShowDetails] = useState(false);
   const isClickable = Boolean(details || extraDetails);
 
@@ -259,12 +288,48 @@ function MetricCard({ title, value, icon, bgColor = "bg-white", details, extraDe
           )}
         </div>
       </div>
-      <p className="text-3xl sm:text-4xl font-black text-slate-800 tracking-tight">{value}</p>
+      
+      {typeof value === "string" || typeof value === "number" ? (
+        <p className="text-3xl sm:text-4xl font-black text-slate-800 tracking-tight">{value}</p>
+      ) : (
+        value
+      )}
 
       {/* Invisible overlay to click-away and close details */}
       {showDetails && (
         <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setShowDetails(false); }}></div>
       )}
+    </div>
+  );
+}
+
+function TopThreeChart({ data, unit = "", color = "bg-emerald-500" }: { data: Record<string, number> | undefined, unit?: string, color?: string }) {
+  if (!data || Object.keys(data).length === 0) return <div className="text-slate-400 italic text-sm mt-2">No data yet.</div>;
+
+  const sorted = Object.entries(data).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const max = sorted[0][1];
+
+  return (
+    <div className="mt-1 flex flex-col gap-2 w-full">
+      {sorted.map(([name, count], index) => {
+        const percentage = Math.max(5, Math.round((count / max) * 100));
+        return (
+          <div key={name} className="flex flex-col gap-1">
+            <div className="flex justify-between text-[11px] items-end w-full">
+              <span className="font-semibold text-slate-700 pr-2 whitespace-normal wrap-break-word leading-tight" title={name.replace(/_/g, ' ')}>
+                {index + 1}. {name.replace(/_/g, ' ')}
+              </span>
+              <span className="text-slate-500 font-mono font-medium leading-none">{count}{unit}</span>
+            </div>
+            <div className="w-full bg-slate-200/60 rounded-full h-1.5 overflow-hidden">
+              <div 
+                className={`${color} h-full rounded-full transition-all duration-1000 ease-out`}
+                style={{ width: `${percentage}%` }}
+              />
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
