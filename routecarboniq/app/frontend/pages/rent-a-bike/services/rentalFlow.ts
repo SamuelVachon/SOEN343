@@ -76,29 +76,17 @@ export function subscribeToStations(
 }
 
 export async function seedStationsIfEmpty(stations: SeedStationInput[]) {
-  const existing = await db.collection(STATIONS_COLLECTION).limit(1).get();
-  if (!existing.empty) {
-    return false;
-  }
-
-  const batch = db.batch();
-  const seededAt = new Date();
-
-  stations.forEach((station) => {
-    const ref = db.collection(STATIONS_COLLECTION).doc(station.station_id);
-    batch.set(ref, {
-      name: station.name,
-      capacity: station.capacity,
-      lat: station.lat ?? null,
-      lon: station.lon ?? null,
-      availableBikes: station.num_bikes_available,
-      availableDocks: station.num_docks_available,
-      updatedAt: seededAt,
-    });
+  const res = await fetch("/api/rent-a-bike/stations/seed", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ stations }),
   });
-
-  await batch.commit();
-  return true;
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || "Failed to seed stations");
+  }
+  const data = await res.json();
+  return data.seeded;
 }
 
 export function subscribeToOpenRental(
@@ -130,131 +118,41 @@ export function subscribeToOpenRental(
 }
 
 export async function createRental(input: CreateRentalInput) {
-  if (!input.userId) {
-    throw new Error("Authentication required to create a rental.");
+  const res = await fetch("/api/rent-a-bike/rent/create", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to create rental");
   }
-
-  const rentalRef = db.collection(RENTALS_COLLECTION).doc();
-  const stationRef = db
-    .collection(STATIONS_COLLECTION)
-    .doc(input.startStationId);
-
-  const rental: Omit<RentalRecord, "id"> = {
-    userKey: input.userKey,
-    userId: input.userId,
-    userEmail: input.userEmail,
-    startStationId: input.startStationId,
-    startStationName: input.startStationName,
-    serviceFee: input.serviceFee,
-    pricePerMinute: input.pricePerMinute,
-    isOpen: true,
-    status: "active",
-  };
-
-  const createdAt = new Date();
-  const t0 = Date.now();
-  await db.runTransaction(async (transaction) => {
-    const stationSnapshot = await transaction.get(stationRef);
-    if (!stationSnapshot.exists) {
-      throw new Error("Start station not found.");
-    }
-
-    const stationData = stationSnapshot.data();
-    const availableBikes = Number(stationData?.availableBikes ?? 0);
-    const availableDocks = Number(stationData?.availableDocks ?? 0);
-
-    if (availableBikes <= 0) {
-      throw new Error("No bikes available at this station.");
-    }
-
-    transaction.set(rentalRef, rental);
-    transaction.update(stationRef, {
-      availableBikes: availableBikes - 1,
-      availableDocks: availableDocks + 1,
-      updatedAt: createdAt,
-    });
-  });
-  AnalyticsService.getInstance().trackEvent("API_REQUEST_COMPLETED", {
-    latencyMs: Date.now() - t0,
-    endpoint: "Rent a bike",
-    startStation: input.startStationName,
-  });
-
-  return {
-    id: rentalRef.id,
-    ...rental,
-  } satisfies RentalRecord;
+  return data satisfies RentalRecord;
 }
 
 export async function startRide(rentalId: string) {
-  const rentalRef = db.collection(RENTALS_COLLECTION).doc(rentalId);
-  await rentalRef.update({
-    startedAt: new Date(),
+  const res = await fetch("/api/rent-a-bike/rent/start", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ rentalId }),
   });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || "Failed to start ride");
+  }
 }
 
 export async function completeRental(input: CompleteRentalInput) {
-  const rentalRef = db.collection(RENTALS_COLLECTION).doc(input.rentalId);
-  const snapshot = await rentalRef.get();
-
-  if (!snapshot.exists) {
-    throw new Error("Rental not found.");
+  const res = await fetch("/api/rent-a-bike/rent/complete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to complete rental");
   }
-
-  const rental = snapshot.data() as RentalRecord;
-  const returnTime = new Date();
-  const startedAtMillis =
-    timestampToMillis(rental.startedAt) ?? returnTime.getTime();
-  const actualDurationMinutes = Math.max(
-    1,
-    Math.ceil((returnTime.getTime() - startedAtMillis) / 60_000),
-  );
-  const finalCharge = Number(
-    (rental.serviceFee + actualDurationMinutes * rental.pricePerMinute).toFixed(
-      2,
-    ),
-  );
-
-  const destinationStationRef = db
-    .collection(STATIONS_COLLECTION)
-    .doc(input.returnStationId);
-
-  const completeT0 = Date.now();
-  await db.runTransaction(async (transaction) => {
-    const destinationSnapshot = await transaction.get(destinationStationRef);
-    if (!destinationSnapshot.exists) {
-      throw new Error("Return station not found.");
-    }
-
-    const destinationData = destinationSnapshot.data();
-    const availableBikes = Number(destinationData?.availableBikes ?? 0);
-    const availableDocks = Number(destinationData?.availableDocks ?? 0);
-
-    transaction.update(rentalRef, {
-      isOpen: false,
-      status: "completed",
-      returnStationId: input.returnStationId,
-      returnStationName: input.returnStationName,
-      returnedAt: returnTime,
-      actualDurationMinutes,
-      finalCharge,
-    });
-
-    transaction.update(destinationStationRef, {
-      availableBikes: availableBikes + 1,
-      availableDocks: Math.max(0, availableDocks - 1),
-      updatedAt: returnTime,
-    });
-  });
-  AnalyticsService.getInstance().trackEvent("API_REQUEST_COMPLETED", {
-    latencyMs: Date.now() - completeT0,
-    endpoint: "Return a bike Check-out",
-  });
-
-  return {
-    actualDurationMinutes,
-    finalCharge,
-  };
+  return data;
 }
 
 export function timestampToMillis(value: unknown) {

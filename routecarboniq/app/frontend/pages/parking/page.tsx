@@ -9,6 +9,17 @@ export default function ParkingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [address, setAddress] = useState("Concondia University, Montreal, QC");
+  const [embedUrl, setEmbedUrl] = useState("");
+
+  const updateMapUrl = async (query: string) => {
+    const res = await fetch(`/api/maps/embed-url?type=search&q=parking+near+${encodeURIComponent(query)}`);
+    const data = await res.json();
+    setEmbedUrl(data.url);
+  };
+
+  useEffect(() => {
+    updateMapUrl(address);
+  }, []);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/frontend/login");
@@ -47,6 +58,7 @@ export default function ParkingPage() {
               address: { value: string };
             };
             setAddress(target.address.value);
+            updateMapUrl(target.address.value);
             
             // Track Google Maps Places API interaction
             AnalyticsService.getInstance().trackEvent("API_REQUEST_COMPLETED", {
@@ -92,15 +104,17 @@ export default function ParkingPage() {
           Loading STM...
         </div>
       )}
-      <iframe
-        width="100%"
-        height="100%"
-        frameBorder="0"
-        style={{ border: 0 }}
-        referrerPolicy="no-referrer-when-downgrade"
-        src={`https://www.google.com/maps/embed/v1/search?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=parking+near+${address}`}
-        allowFullScreen
-      ></iframe>
+      {embedUrl && (
+        <iframe
+          width="100%"
+          height="100%"
+          frameBorder="0"
+          style={{ border: 0 }}
+          referrerPolicy="no-referrer-when-downgrade"
+          src={embedUrl}
+          allowFullScreen
+        ></iframe>
+      )}
     </div>
   );
 }
