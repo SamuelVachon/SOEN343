@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/app/frontend/lib/firebaseClient";
+import { dbAdmin } from "@/app/api/lib/firebaseAdmin";
 
 const RENTALS_COLLECTION = "rentals";
 
@@ -11,7 +11,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "rentalId is required" }, { status: 400 });
     }
 
-    const rentalRef = db.collection(RENTALS_COLLECTION).doc(rentalId);
+    const rentalRef = dbAdmin.collection(RENTALS_COLLECTION).doc(rentalId);
     await rentalRef.update({
       startedAt: new Date(),
     });

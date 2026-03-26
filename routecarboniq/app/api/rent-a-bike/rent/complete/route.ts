@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/app/frontend/lib/firebaseClient";
+import { dbAdmin } from "@/app/api/lib/firebaseAdmin";
 import { AnalyticsService } from "@/app/frontend/services/AnalyticsService";
 
 const RENTALS_COLLECTION = "rentals";
@@ -19,7 +19,7 @@ function timestampToMillis(value: any) {
 export async function POST(req: Request) {
   try {
     const input = await req.json();
-    const rentalRef = db.collection(RENTALS_COLLECTION).doc(input.rentalId);
+    const rentalRef = dbAdmin.collection(RENTALS_COLLECTION).doc(input.rentalId);
     const snapshot = await rentalRef.get();
 
     if (!snapshot.exists) {
@@ -37,10 +37,10 @@ export async function POST(req: Request) {
       ((rental?.serviceFee ?? 0) + actualDurationMinutes * (rental?.pricePerMinute ?? 0)).toFixed(2)
     );
 
-    const destinationStationRef = db.collection(STATIONS_COLLECTION).doc(input.returnStationId);
+    const destinationStationRef = dbAdmin.collection(STATIONS_COLLECTION).doc(input.returnStationId);
     const completeT0 = Date.now();
 
-    await db.runTransaction(async (transaction: any) => {
+    await dbAdmin.runTransaction(async (transaction: any) => {
       const destinationSnapshot = await transaction.get(destinationStationRef);
       if (!destinationSnapshot.exists) {
         throw new Error("Return station not found.");

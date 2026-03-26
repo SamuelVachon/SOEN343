@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { db } from "@/app/frontend/lib/firebaseClient";
+import { dbAdmin } from "@/app/api/lib/firebaseAdmin";
 
 const STATIONS_COLLECTION = "stations";
 
 async function updateStationBikeInventory(stationId: string, delta: 1 | -1) {
-  const stationRef = db.collection(STATIONS_COLLECTION).doc(stationId);
+  const stationRef = dbAdmin.collection(STATIONS_COLLECTION).doc(stationId);
   const updatedAt = new Date();
 
-  return db.runTransaction(async (transaction: any) => {
+  return dbAdmin.runTransaction(async (transaction: any) => {
     const stationSnapshot = await transaction.get(stationRef);
     if (!stationSnapshot.exists) {
       throw new Error("Station not found.");

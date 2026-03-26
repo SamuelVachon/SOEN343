@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/app/frontend/lib/firebaseClient";
+import { dbAdmin } from "@/app/api/lib/firebaseAdmin";
 
 const STATIONS_COLLECTION = "stations";
 
@@ -7,16 +7,16 @@ export async function POST(req: Request) {
   try {
     const { stations } = await req.json();
 
-    const existing = await db.collection(STATIONS_COLLECTION).limit(1).get();
+    const existing = await dbAdmin.collection(STATIONS_COLLECTION).limit(1).get();
     if (!existing.empty) {
       return NextResponse.json({ seeded: false, message: "Already seeded" });
     }
 
-    const batch = db.batch();
+    const batch = dbAdmin.batch();
     const seededAt = new Date();
 
     stations.forEach((station: any) => {
-      const ref = db.collection(STATIONS_COLLECTION).doc(station.station_id);
+      const ref = dbAdmin.collection(STATIONS_COLLECTION).doc(station.station_id);
       batch.set(ref, {
         name: station.name,
         capacity: station.capacity,

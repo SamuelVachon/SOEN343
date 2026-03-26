@@ -63,7 +63,8 @@ export class AnalyticsService {
       const batch = this.queue.splice(0, 10); // Batch limit
       
       try {
-        await fetch('/api/analytics/track', {
+        const baseUrl = typeof window !== 'undefined' ? '' : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000');
+        await fetch(`${baseUrl}/api/analytics/track`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

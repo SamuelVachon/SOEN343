@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/app/frontend/lib/firebaseClient";
+import { dbAdmin } from "@/app/api/lib/firebaseAdmin";
 import { AnalyticsService } from "@/app/frontend/services/AnalyticsService";
 
 const RENTALS_COLLECTION = "rentals";
@@ -16,8 +16,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const rentalRef = db.collection(RENTALS_COLLECTION).doc();
-    const stationRef = db.collection(STATIONS_COLLECTION).doc(input.startStationId);
+    const rentalRef = dbAdmin.collection(RENTALS_COLLECTION).doc();
+    const stationRef = dbAdmin.collection(STATIONS_COLLECTION).doc(input.startStationId);
 
     const rental = {
       userKey: input.userKey,
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     const createdAt = new Date();
     const t0 = Date.now();
 
-    await db.runTransaction(async (transaction: any) => {
+    await dbAdmin.runTransaction(async (transaction: any) => {
       const stationSnapshot = await transaction.get(stationRef);
       if (!stationSnapshot.exists) {
         throw new Error("Start station not found.");
