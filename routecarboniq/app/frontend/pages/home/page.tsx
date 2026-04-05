@@ -71,7 +71,7 @@ export default function Home() {
 
           {/* Plan Trip Button */}
           <Link
-            href="/"
+            href="/frontend/pages/plan-trip"
             className="group flex items-center gap-3 rounded-2xl bg-slate-900 px-7 py-4 text-white shadow-2xl shadow-slate-300 transition-all hover:-translate-y-1 hover:bg-slate-800 active:scale-95"
           >
             <MapPin size={18} className="text-emerald-400" />
