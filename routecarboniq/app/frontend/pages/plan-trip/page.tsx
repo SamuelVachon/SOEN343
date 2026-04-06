@@ -3,7 +3,7 @@
 import { SubmitEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
-import { APIProvider,Map,useMapsLibrary,useMap} from '@vis.gl/react-google-maps';
+import { APIProvider, Map, useMapsLibrary, useMap } from '@vis.gl/react-google-maps';
 import { on } from "events";
 
 
@@ -16,7 +16,7 @@ enum TravelMode {
     TRANSIT = "TRANSIT",
 }
 
-interface DirectionsRequest{
+interface DirectionsRequest {
     origin: String
     destination: String
     travelMode: TravelMode
@@ -76,6 +76,7 @@ export default function PlanTrip() {
     //Example of values that can be extracted from the directions result and displayed on the UI
     const [distanceValue, setDistanceValue] = useState<number>(0);
     const [durationValue, setDurationValue] = useState<number>(0);
+    const [carbonEmission, setCarbonEmission] = useState<number | string>(0);
 
     // Redirect unauthenticated users to home
     useEffect(() => {
@@ -98,28 +99,28 @@ export default function PlanTrip() {
     return (
         <div
             style={{
-            display: "flex",
-            flexDirection: "column",
-            height: "100vh",
+                display: "flex",
+                flexDirection: "column",
+                height: "100vh",
             }}
         >
             {/* Header bar */}
             <div
-            style={{
-                display: "flex",
-                alignItems: "center",
-                alignContent: "center",
-                justifyContent: "space-between",
-                padding: "12px 20px",
-                background: "#fff",
-                borderBottom: "1px solid #e5e7eb",
-                flexShrink: 0,
-                flexWrap: "wrap",
-                gap: 12,
-            }}
+                style={{
+                    display: "flex",
+                    alignItems: "center",
+                    alignContent: "center",
+                    justifyContent: "space-between",
+                    padding: "12px 20px",
+                    background: "#fff",
+                    borderBottom: "1px solid #e5e7eb",
+                    flexShrink: 0,
+                    flexWrap: "wrap",
+                    gap: 12,
+                }}
             >
                 <div style={{ alignContent: "right", display: "flex", justifyContent: "flex-end", width: "100%" }}>
-                    <form onSubmit={(e) => {handleSearch(e)}} >
+                    <form onSubmit={(e) => { handleSearch(e) }} >
                         <input name="origin" placeholder="Enter your starting point" />
                         <input name="destination" placeholder="Enter your destination" />
                         <select name="travelMode">
@@ -128,46 +129,78 @@ export default function PlanTrip() {
                             <option value={TravelMode.BICYCLING}>Bicycling</option>
                             <option value={TravelMode.TRANSIT}>Transit</option>
                         </select>
-                        <button type="submit" style={{marginLeft: 8, padding: "6px 12px", background: "#10b981", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer"}}>Itinerary</button>
+                        <button type="submit" style={{ marginLeft: 8, padding: "6px 12px", background: "#10b981", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer" }}>Itinerary</button>
                     </form>
                     <div>
-                        <p style={{margin: 0, fontSize: 14, color: "#6b7280"}}>Distance: {(distanceValue / 1000).toFixed(2)} km</p>
-                        <p style={{margin: 0, fontSize: 14, color: "#6b7280"}}>Duration: {(durationValue / 60).toFixed(2)} mins</p>
+                        <p style={{ margin: 0, fontSize: 14, color: "#6b7280" }}>Distance: {(distanceValue / 1000).toFixed(2)} km</p>
+                        <p style={{ margin: 0, fontSize: 14, color: "#6b7280" }}>Duration: {(durationValue / 60).toFixed(2)} mins</p>
+                        <p style={{ margin: 0, fontSize: 14, color: "#6b7280" }}>
+                            Estimated CO2: {typeof carbonEmission === "string" ? carbonEmission : (carbonEmission >= 1000 ? (carbonEmission / 1000).toFixed(2) + " kg" : carbonEmission.toFixed(2) + " g")}
+                        </p>
                     </div>
                 </div>
             </div>
             {/* Map */}
             {loading && (
-            <div
-                style={{
-                    position: "absolute",
-                    inset: 0,
-                    zIndex: 1000,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: "rgba(255,255,255,0.7)",
-                    fontSize: 16,
-                    color: "#6b7280",
-                }}
-            >
-                Loading Map...
-            </div>
+                <div
+                    style={{
+                        position: "absolute",
+                        inset: 0,
+                        zIndex: 1000,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: "rgba(255,255,255,0.7)",
+                        fontSize: 16,
+                        color: "#6b7280",
+                    }}
+                >
+                    Loading Map...
+                </div>
             )}
-            
-            <APIProvider apiKey={apiKey} onLoad={() => {}}>
+
+            <APIProvider apiKey={apiKey} onLoad={() => { }}>
                 <Map defaultCenter={position} defaultZoom={10} mapId="DEMO_MAP_ID">
                     <Directions directionsRequest={directionsRequest} onRouteCalculated={(result) => {
                         const leg = result.routes[0]?.legs[0];
                         setDistanceValue(leg?.distance?.value || 0);
                         setDurationValue(leg?.duration?.value || 0);
-                    }}/>
+
+                        // Carbon Emission estimation logic 
+                        let emission: number | string = 0;
+                        if (directionsRequest.travelMode === TravelMode.BICYCLING || directionsRequest.travelMode === TravelMode.WALKING) {
+                            emission = "Negligible";
+                        } else if (directionsRequest.travelMode === TravelMode.DRIVING) {
+                            // Assuming average 200g CO2 per km for driving
+                            emission = ((leg?.distance?.value || 0) / 1000) * 200;
+                        } else if (directionsRequest.travelMode === TravelMode.TRANSIT) {
+                            let totalTransitEmission = 0;
+                            if (leg?.steps) {
+                                leg.steps.forEach(step => {
+                                    if (step.travel_mode === "TRANSIT" && step.transit) {
+                                        const vehicleType = step.transit.line.vehicle.type;
+                                        const stepDistanceKm = (step.distance?.value || 0) / 1000;
+
+                                        if (vehicleType === "BUS" || vehicleType === "INTERCITY_BUS") {
+                                            // Assuming average 100g CO2 per km for bus
+                                            totalTransitEmission += stepDistanceKm * 100;
+                                        } else if (["SUBWAY", "TRAIN", "COMMUTER_TRAIN", "TRAM", "HEAVY_RAIL"].includes(vehicleType)) {
+                                            // Assuming average 15g CO2 per km for metro/REM
+                                            totalTransitEmission += stepDistanceKm * 15;
+                                        }
+                                    }
+                                });
+                            }
+                            emission = totalTransitEmission;
+                        }
+
+                        setCarbonEmission(emission);
+                    }} />
                 </Map>
             </APIProvider>
-        
+
         </div>
-        
-             
+
+
     );
 }
-  
