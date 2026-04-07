@@ -120,7 +120,7 @@ export default function PlanTrip() {
                 }}
             >
                 <div style={{ alignContent: "right", display: "flex", justifyContent: "flex-end", width: "100%" }}>
-                    <form onSubmit={(e) => { handleSearch(e) }} >
+                    <form onSubmit={(e) => { handleSearch(e) }} > style={{ marginRight: "40px" }}>
                         <input name="origin" placeholder="Enter your starting point" />
                         <input name="destination" placeholder="Enter your destination" />
                         <select name="travelMode">
