@@ -6,9 +6,6 @@ import { useAuth } from "../../context/AuthContext";
 import { APIProvider, Map, useMapsLibrary, useMap } from '@vis.gl/react-google-maps';
 import { on } from "events";
 
-
-
-
 enum TravelMode {
     DRIVING = "DRIVING",
     WALKING = "WALKING",
@@ -57,7 +54,6 @@ function Directions(propsReq: { directionsRequest: DirectionsRequest, onRouteCal
     }, [directionsService, directionsRenderer, directionsRequest]);
     return null;
 }
-
 
 export default function PlanTrip() {
     // Authentication and Routing
@@ -193,14 +189,10 @@ export default function PlanTrip() {
                             }
                             emission = totalTransitEmission;
                         }
-
                         setCarbonEmission(emission);
                     }} />
                 </Map>
             </APIProvider>
-
         </div>
-
-
     );
 }

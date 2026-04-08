@@ -13,6 +13,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Leaf,
+  MapPin,
   User,
 } from "lucide-react";
 
@@ -22,6 +23,12 @@ const navItems = [
     href: "/frontend/pages/rent-a-bike",
     icon: Bike,
     iconClass: "bg-rose-400 text-white shadow-lg shadow-rose-100",
+  },
+  {
+    label: "Plan Trip",
+    href: "/frontend/pages/plan-trip",
+    icon: MapPin,
+    iconClass: "bg-violet-400 text-white shadow-lg shadow-violet-100",
   },
   {
     label: "STM",

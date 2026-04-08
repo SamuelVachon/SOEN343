@@ -197,7 +197,7 @@ export default function DashboardPage() {
               />
               <MetricCard 
                 title="Daily Users" 
-                value={adminMetrics?.dailyActiveUsers?.length || 0} 
+                value={adminMetrics?.dailyActiveUsersCount || 0} 
                 icon={<Users className="h-6 w-6 text-rose-500" />} 
                 bgColor="bg-rose-50"
                 details={`Total DAU recorded. Today's unique actives: ${adminMetrics?.dailyActiveUsersCount || 0}`}
