@@ -1,11 +1,10 @@
 "use client";
 
-import { SubmitEvent, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
-import { APIProvider, Map, useMapsLibrary, useMap } from '@vis.gl/react-google-maps';
+import { APIProvider, Map, useMapsLibrary, useMap} from '@vis.gl/react-google-maps';
 import { Bike, Bus, Car, Footprints } from "lucide-react";
-import { on } from "events";
 
 enum TravelMode {
     DRIVING = "DRIVING",
@@ -15,8 +14,8 @@ enum TravelMode {
 }
 
 interface DirectionsRequest {
-    origin: string;
-    destination: string;
+    origin: google.maps.LatLng | string;
+    destination: google.maps.LatLng | string;
     travelMode: TravelMode;
 }
 
@@ -25,6 +24,42 @@ interface RouteData {
     duration: number;
     carbonEmission: number; // in grams
 }
+
+
+    function initAutocomplete(originRef: React.RefObject<HTMLInputElement | null>, destinationRef: React.RefObject<HTMLInputElement | null>, setOriginCoords: (coords: google.maps.LatLng) => void, setDestinationCoords: (coords: google.maps.LatLng) => void) {
+        if (!window.google || !originRef.current || !destinationRef.current) return;
+
+        const originAutocomplete = new google.maps.places.Autocomplete(originRef.current);
+        const destinationAutocomplete = new google.maps.places.Autocomplete(destinationRef.current);
+
+        // Bias for Canada
+        originAutocomplete.setComponentRestrictions({ country: "ca" });
+        destinationAutocomplete.setComponentRestrictions({ country: "ca" });
+
+        originAutocomplete.addListener("place_changed", () => {
+            const place = originAutocomplete.getPlace();
+            if (!place.geometry?.location) return;
+
+            const coords = new google.maps.LatLng(
+                place.geometry.location.lat(),
+                place.geometry.location.lng()
+            );
+
+            setOriginCoords(coords);
+        });
+
+        destinationAutocomplete.addListener("place_changed", () => {
+            const place = destinationAutocomplete.getPlace();
+            if (!place.geometry?.location) return;
+
+            const coords = new google.maps.LatLng(
+                place.geometry.location.lat(),
+                place.geometry.location.lng()
+            );
+
+            setDestinationCoords(coords);
+        });
+    }
 
 function Directions(propsReq: { 
     directionsRequest: DirectionsRequest, 
@@ -37,6 +72,8 @@ function Directions(propsReq: {
     const routesLibrary = useMapsLibrary("routes");
     const [directionsService, setDirectionsService] = useState<google.maps.DirectionsService | null>(null);
     const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
+
+
 
     // Initialize services when the library and map are ready
     useEffect(() => {
@@ -56,8 +93,8 @@ function Directions(propsReq: {
         if (!directionsService || !directionsRenderer) return;
         if (!directionsRequest.origin || !directionsRequest.destination) return;
         
-        let origin = directionsRequest.origin.trim() + ", Montreal, QC";
-        let destination = directionsRequest.destination.trim() + ", Montreal, QC";
+        let origin = directionsRequest.origin;
+        let destination = directionsRequest.destination;
         let travelMode = directionsRequest.travelMode;
         
         directionsService.route({
@@ -111,9 +148,13 @@ export default function PlanTrip() {
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
     
     // UI state
-    const [searchOrigin, setSearchOrigin] = useState<string>("");
-    const [searchDestination, setSearchDestination] = useState<string>("");
+    const [searchOrigin, setSearchOrigin] = useState<string | google.maps.LatLng>("");
+    const [searchDestination, setSearchDestination] = useState<string | google.maps.LatLng>("");
     const [selectedMode, setSelectedMode] = useState<TravelMode>(TravelMode.TRANSIT);
+    const [originCoords, setOriginCoords] = useState<google.maps.LatLng | null>(null);
+    const [destinationCoords, setDestinationCoords] = useState<google.maps.LatLng | null>(null);
+    const originRef = useRef<HTMLInputElement | null>(null);
+    const destinationRef = useRef<HTMLInputElement | null>(null);
     
     const [routeData, setRouteData] = useState<Record<TravelMode, RouteData | null>>({
         [TravelMode.DRIVING]: null,
@@ -127,16 +168,33 @@ export default function PlanTrip() {
         if (!loading && !user) router.replace("/");
     }, [loading, user, router]);
 
-    if (loading) return <p>Loading...</p>;
-    if (!user) return null;
-
-    // Handle form submission to request directions
+/*     // Handle form submission to request directions (currently not used since we update on autocomplete selection)
     function handleSearch(e: SubmitEvent<HTMLFormElement>) {
         e.preventDefault();
         const formData = new FormData(e.target as HTMLFormElement);
-        setSearchOrigin(formData.get('origin') as string);
-        setSearchDestination(formData.get('destination') as string);
-    }
+        if (originCoords) {
+            setSearchOrigin(originCoords);
+        }
+        if (destinationCoords) {
+            setSearchDestination(destinationCoords);
+        }
+        setOriginCoords(null);
+        setDestinationCoords(null);
+        originRef.current!.value = "";
+        destinationRef.current!.value = "";
+    } */
+
+    // Update search state when coordinates are set from autocomplete
+    useEffect(() => {
+        if(!originCoords || !destinationCoords) return;
+        setSearchOrigin(originCoords);
+        setSearchDestination(destinationCoords);
+    }, [originCoords, destinationCoords]);
+
+    // Redirect unauthenticated users to home
+    if (loading) return <p>Loading...</p>;
+    if (!user) return null;
+
 
     const calculateCarbonEmission = (mode: TravelMode, distance: number, steps: google.maps.DirectionsStep[]) => {
         if (mode === TravelMode.BICYCLING || mode === TravelMode.WALKING) return 0;
@@ -220,18 +278,18 @@ export default function PlanTrip() {
         <div className="flex flex-col h-screen bg-slate-50">
             {/* Header Search area */}
             <div className="bg-white p-4 border-b border-slate-200 shrink-0 shadow-xs">
-                <form onSubmit={(e) => { handleSearch(e) }} className="flex flex-wrap items-end gap-3 max-w-4xl mx-auto">
+                <form onSubmit={(e) => { /*handleSearch(e) */ }} className="flex flex-wrap items-end gap-3 max-w-4xl mx-auto">
                     <div className="flex-1 min-w-[200px]">
                         <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Start Point</label>
-                        <input name="origin" placeholder="Choose Start point..." className="w-full h-10 px-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" />
+                        <input ref={originRef} name="origin" placeholder="Choose Start point..." className="w-full h-10 px-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" />
                     </div>
                     <div className="flex-1 min-w-[200px]">
                         <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Destination</label>
-                        <input name="destination" placeholder="Choose Destination..." className="w-full h-10 px-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" />
+                        <input ref={destinationRef} name="destination" placeholder="Choose Destination..." className="w-full h-10 px-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" />
                     </div>
-                    <button type="submit" className="h-10 px-6 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg text-sm transition-colors shadow-sm whitespace-nowrap">
+                    {/*<button type="submit" className="h-10 px-6 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg text-sm transition-colors shadow-sm whitespace-nowrap">
                         Find Route
-                    </button>
+                    </button>*/}
                 </form>
             </div>
 
@@ -243,7 +301,7 @@ export default function PlanTrip() {
                     </div>
                 )}
 
-                <APIProvider apiKey={apiKey} onLoad={() => { }}>
+                <APIProvider apiKey={apiKey} onLoad={() => {initAutocomplete(originRef, destinationRef, setOriginCoords, setDestinationCoords) }} libraries={["places"]}>
                     <Map defaultCenter={position} defaultZoom={12} mapId="DEMO_MAP_ID" disableDefaultUI={true}>
                         <TransitMapLayer visible={selectedMode === TravelMode.TRANSIT} />
                         {searchOrigin && searchDestination && Object.values(TravelMode).map((mode) => (
