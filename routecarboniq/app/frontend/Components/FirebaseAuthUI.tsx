@@ -17,8 +17,6 @@ export default function FirebaseAuthUI() {
     uiRef.current.start("#firebaseui-auth-container", {
       signInOptions: [
         firebase.auth.GoogleAuthProvider.PROVIDER_ID,
-        firebase.auth.EmailAuthProvider.PROVIDER_ID,
-        firebase.auth.PhoneAuthProvider.PROVIDER_ID,
         // add more providers if you want
       ],
       signInFlow: "popup", // "redirect" also works
@@ -36,5 +34,20 @@ export default function FirebaseAuthUI() {
     };
   }, []);
 
-  return <div id="firebaseui-auth-container" />;
+  return (
+    <>
+      <div id="firebaseui-auth-container" />
+      <style jsx global>{`
+        #firebaseui-auth-container .firebaseui-idp-button,
+        #firebaseui-auth-container .firebaseui-tenant-button {
+          width: 100%;
+          max-width: none;
+          min-height: 56px;
+          border-radius: 1rem;
+          box-shadow: none;
+          border: 1px solid rgb(226 232 240);
+        }
+      `}</style>
+    </>
+  );
 }
