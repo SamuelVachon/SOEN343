@@ -24,4 +24,6 @@ export interface CompletedRentalSummary {
   returnStationName: string;
   actualDurationMinutes: number;
   finalCharge: number;
+  distanceKm?: number;
+  carbonSaved?: number;
 }

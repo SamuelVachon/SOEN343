@@ -369,6 +369,8 @@ export default function BixiMap() {
         returnStationName: returnStation.name,
         actualDurationMinutes: result.actualDurationMinutes,
         finalCharge: result.finalCharge,
+        distanceKm: result.distanceKm,
+        carbonSaved: result.carbonSaved,
       });
       setReturnStationId("");
       setActiveRental(null);

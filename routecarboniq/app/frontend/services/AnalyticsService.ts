@@ -3,7 +3,9 @@ export type EventName =
   | 'RIDE_COMPLETED' 
   | 'SESSION_ENDED'
   | 'SCREEN_TIME_LOGGED'
-  | 'API_REQUEST_COMPLETED';
+  | 'API_REQUEST_COMPLETED'
+  | 'PLAN_TRIP_SEARCH'
+  | 'START_NAVIGATION';
 
 export interface EventData {
   userId?: string;
@@ -19,7 +21,7 @@ type ObserverCallback = (eventName: EventName, eventData: EventData) => void;
 
 export class AnalyticsService {
   private static instance: AnalyticsService;
-  private queue: { eventName: EventName; eventData: EventData }[] = [];
+  private readonly queue: { eventName: EventName; eventData: EventData }[] = [];
   private isProcessing = false;
   private observers: ObserverCallback[] = [];
 
@@ -63,7 +65,7 @@ export class AnalyticsService {
       const batch = this.queue.splice(0, 10); // Batch limit
       
       try {
-        const baseUrl = typeof window !== 'undefined' ? '' : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000');
+        const baseUrl = typeof globalThis !== 'undefined' && globalThis.window ? '' : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000');
         await fetch(`${baseUrl}/api/analytics/track`, {
           method: 'POST',
           headers: {

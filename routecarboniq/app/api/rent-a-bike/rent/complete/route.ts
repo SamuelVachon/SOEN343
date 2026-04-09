@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { dbAdmin } from "@/app/api/lib/firebaseAdmin";
 import { AnalyticsService } from "@/app/frontend/services/AnalyticsService";
+import { haversineDistance, calculateCarbonSaved } from "@/app/lib/carbonUtils";
+import { getAuth } from "firebase-admin/auth";
 
 const RENTALS_COLLECTION = "rentals";
 const STATIONS_COLLECTION = "stations";
@@ -38,7 +40,11 @@ export async function POST(req: Request) {
     );
 
     const destinationStationRef = dbAdmin.collection(STATIONS_COLLECTION).doc(input.returnStationId);
+    const startStationRef = dbAdmin.collection(STATIONS_COLLECTION).doc(rental?.startStationId);
     const completeT0 = Date.now();
+
+    let startStationData: any = null;
+    let destinationStationData: any = null;
 
     await dbAdmin.runTransaction(async (transaction: any) => {
       const destinationSnapshot = await transaction.get(destinationStationRef);
@@ -46,9 +52,14 @@ export async function POST(req: Request) {
         throw new Error("Return station not found.");
       }
 
-      const destinationData = destinationSnapshot.data();
-      const availableBikes = Number(destinationData?.availableBikes ?? 0);
-      const availableDocks = Number(destinationData?.availableDocks ?? 0);
+      const startSnapshot = await transaction.get(startStationRef);
+      if (startSnapshot.exists) {
+        startStationData = startSnapshot.data();
+      }
+
+      destinationStationData = destinationSnapshot.data();
+      const availableBikes = Number(destinationStationData?.availableBikes ?? 0);
+      const availableDocks = Number(destinationStationData?.availableDocks ?? 0);
 
       transaction.update(rentalRef, {
         isOpen: false,
@@ -72,9 +83,40 @@ export async function POST(req: Request) {
       endpoint: "Return a bike Check-out",
     });
 
+    let distanceKm = 0;
+    let carbonSaved = 0;
+
+    // Track carbon emissions from bike rental
+    if (startStationData && destinationStationData && rental?.userId) {
+      try {
+        distanceKm = haversineDistance(
+          startStationData.lat,
+          startStationData.lon,
+          destinationStationData.lat,
+          destinationStationData.lon
+        );
+        carbonSaved = calculateCarbonSaved(distanceKm);
+        
+        await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/users/track-emission`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ carbonSaved, carbonEmitted: 0, userId: rental.userId }),
+          }
+        ).catch((err) => console.error("Failed to track emission:", err));
+      } catch (err) {
+        console.error("Error calculating emission:", err);
+      }
+    }
+
     return NextResponse.json({
       actualDurationMinutes,
       finalCharge,
+      distanceKm: parseFloat(distanceKm.toFixed(2)),
+      carbonSaved,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 400 });

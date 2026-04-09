@@ -19,6 +19,8 @@ interface CompletedRentalSummary {
   returnStationName: string;
   actualDurationMinutes: number;
   finalCharge: number;
+  distanceKm?: number;
+  carbonSaved?: number;
 }
 
 interface ReservationModalProps {
@@ -382,6 +384,20 @@ export default function ReservationModal({
                 <span>Ride Duration</span>
                 <span>{completedRental.actualDurationMinutes} mins</span>
               </div>
+              {completedRental.distanceKm !== undefined && (
+                <div style={{ ...styles.priceRow, marginTop: 6 }}>
+                  <span>Distance Traveled</span>
+                  <span>{completedRental.distanceKm.toFixed(2)} km</span>
+                </div>
+              )}
+              {completedRental.carbonSaved !== undefined && (
+                <div style={{ ...styles.priceRow, marginTop: 6 }}>
+                  <span>CO2 Saved</span>
+                  <span className="text-emerald-600" style={{ color: "#10b981", fontWeight: 600 }}>
+                    {(completedRental.carbonSaved / 1000).toFixed(2)} kg
+                  </span>
+                </div>
+              )}
               <div style={{ ...styles.priceRow, marginTop: 6 }}>
                 <span>Paid</span>
                 <span>${completedRental.finalCharge.toFixed(2)}</span>
