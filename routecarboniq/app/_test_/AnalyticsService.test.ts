@@ -6,7 +6,7 @@ import type {
 
 // Reset singleton and fetch mock between every test
 beforeEach(() => {
-  (AnalyticsService as any).instance = undefined;
+  AnalyticsService.resetInstance();
   global.fetch = jest.fn().mockResolvedValue({ ok: true } as Response);
 });
 

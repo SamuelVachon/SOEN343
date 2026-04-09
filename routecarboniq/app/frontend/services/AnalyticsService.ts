@@ -1,9 +1,9 @@
-export type EventName = 
-  | 'USER_LOGIN' 
-  | 'RIDE_COMPLETED' 
-  | 'SESSION_ENDED'
-  | 'SCREEN_TIME_LOGGED'
-  | 'API_REQUEST_COMPLETED';
+export type EventName =
+  | "USER_LOGIN"
+  | "RIDE_COMPLETED"
+  | "SESSION_ENDED"
+  | "SCREEN_TIME_LOGGED"
+  | "API_REQUEST_COMPLETED";
 
 export interface EventData {
   userId?: string;
@@ -34,6 +34,11 @@ export class AnalyticsService {
     return AnalyticsService.instance;
   }
 
+  /** Resets the singleton — for use in unit tests only. */
+  public static resetInstance(): void {
+    AnalyticsService.instance = undefined!;
+  }
+
   // Observer pattern: register components that want to listen
   public subscribe(callback: ObserverCallback) {
     this.observers.push(callback);
@@ -61,18 +66,24 @@ export class AnalyticsService {
     // Process all events in queue
     while (this.queue.length > 0) {
       const batch = this.queue.splice(0, 10); // Batch limit
-      
+
       try {
-        const baseUrl = typeof window !== 'undefined' ? '' : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000');
+        const baseUrl =
+          typeof window !== "undefined"
+            ? ""
+            : process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
         await fetch(`${baseUrl}/api/analytics/track`, {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({ events: batch }),
         });
       } catch (err) {
-        console.error('Failed to send analytics queue to microservice API:', err);
+        console.error(
+          "Failed to send analytics queue to microservice API:",
+          err,
+        );
         // Put failed batch back in queue
         this.queue.unshift(...batch);
         break; // Stop processing to avoid spamming on a broken connection
@@ -87,8 +98,10 @@ export class AnalyticsService {
   // Fetches metrics specific to the logged-in user
   public async getUserMetrics(userId: string) {
     try {
-      const response = await fetch(`/api/analytics/metrics/user?userId=${userId}`);
-      if (!response.ok) throw new Error('Failed to fetch user metrics');
+      const response = await fetch(
+        `/api/analytics/metrics/user?userId=${userId}`,
+      );
+      if (!response.ok) throw new Error("Failed to fetch user metrics");
       return await response.json();
     } catch (err) {
       console.error(err);
@@ -99,8 +112,8 @@ export class AnalyticsService {
   // Fetches platform-wide global metrics
   public async getGlobalMetrics() {
     try {
-      const response = await fetch('/api/analytics/metrics/global');
-      if (!response.ok) throw new Error('Failed to fetch global metrics');
+      const response = await fetch("/api/analytics/metrics/global");
+      if (!response.ok) throw new Error("Failed to fetch global metrics");
       return await response.json();
     } catch (err) {
       console.error(err);

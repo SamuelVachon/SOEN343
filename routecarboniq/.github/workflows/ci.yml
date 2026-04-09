@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    name: Lint, Test & Build
+    name: Test & Build
     runs-on: ubuntu-latest
 
     steps:
@@ -23,7 +23,7 @@ jobs:
         run: npm ci
 
       - name: Test
-        run: npm run test
+        run: npm run test:coverage
 
       - name: Build
         run: npm run build

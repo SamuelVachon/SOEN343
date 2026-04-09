@@ -36,6 +36,16 @@ import { GET as getUserMetrics } from "@/app/api/analytics/metrics/user/route";
 import { POST as addBike } from "@/app/api/rent-a-bike/stations/inventory/add-bike/route";
 import { POST as removeBike } from "@/app/api/rent-a-bike/stations/inventory/remove-bike/route";
 
+// ─── Firebase mock references ─────────────────────────────────────────────────
+import { dbAdmin } from "@/app/api/lib/firebaseAdmin";
+import { db } from "@/app/frontend/lib/firebaseClient";
+
+// Reset mocks before each test so happy-path setups don't bleed across tests.
+// Sad-path guard clauses return before any Firebase call, so this is safe.
+beforeEach(() => {
+  jest.resetAllMocks();
+});
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function postRequest(body: unknown): Request {
@@ -187,5 +197,113 @@ describe("POST /api/rent-a-bike/stations/inventory/remove-bike", () => {
     const res = await removeBike(postRequest({}));
     const body = await res.json();
     expect(body.error).toBe("stationId is required");
+  });
+});
+
+// ─── Happy paths ──────────────────────────────────────────────────────────────
+
+describe("POST /api/rent-a-bike/rent/start — happy path", () => {
+  it("returns 200 with { success: true } when rentalId is valid", async () => {
+    (dbAdmin.collection as jest.Mock).mockReturnValue({
+      doc: jest.fn().mockReturnValue({
+        update: jest.fn().mockResolvedValue(undefined),
+      }),
+    });
+    const res = await startRide(postRequest({ rentalId: "rental-abc" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+  });
+});
+
+describe("POST /api/analytics/track — happy path", () => {
+  it("returns 200 when events is a valid empty array (no Firebase calls)", async () => {
+    const res = await trackAnalytics(postRequest({ events: [] }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.message).toBe("Analytics processed");
+  });
+});
+
+describe("GET /api/analytics/metrics/user — happy path", () => {
+  it("returns 200 with stored data when the user doc exists", async () => {
+    (db.collection as jest.Mock).mockReturnValue({
+      doc: jest.fn().mockReturnValue({
+        get: jest.fn().mockResolvedValue({
+          exists: true,
+          data: () => ({
+            totalRides: 7,
+            totalRideTime: 120,
+            screenTime: 300,
+            totalMoneySpent: 5.25,
+          }),
+        }),
+      }),
+    });
+    const res = await getUserMetrics(
+      getRequest("http://localhost/api/analytics/metrics/user?userId=user-1"),
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.totalRides).toBe(7);
+  });
+
+  it("returns 200 with default zeros when no doc exists for the user", async () => {
+    (db.collection as jest.Mock).mockReturnValue({
+      doc: jest.fn().mockReturnValue({
+        get: jest.fn().mockResolvedValue({ exists: false }),
+      }),
+    });
+    const res = await getUserMetrics(
+      getRequest("http://localhost/api/analytics/metrics/user?userId=new-user"),
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.totalRides).toBe(0);
+  });
+});
+
+describe("POST /api/rent-a-bike/stations/inventory/add-bike — happy path", () => {
+  it("returns 200 with updated counts when stationId is valid and docks are available", async () => {
+    const mockTxGet = jest.fn().mockResolvedValue({
+      exists: true,
+      data: () => ({ availableBikes: 2, availableDocks: 3 }),
+    });
+    const mockTxUpdate = jest.fn();
+    (dbAdmin.collection as jest.Mock).mockReturnValue({
+      doc: jest.fn().mockReturnValue({}),
+    });
+    (dbAdmin.runTransaction as jest.Mock).mockImplementation(
+      async (cb: (t: any) => Promise<any>) =>
+        cb({ get: mockTxGet, update: mockTxUpdate }),
+    );
+    const res = await addBike(postRequest({ stationId: "station-1" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.availableBikes).toBe(3); // 2 + 1
+    expect(body.availableDocks).toBe(2); // 3 - 1
+  });
+});
+
+describe("POST /api/rent-a-bike/stations/inventory/remove-bike — happy path", () => {
+  it("returns 200 with updated counts when stationId is valid and bikes are available", async () => {
+    const mockTxGet = jest.fn().mockResolvedValue({
+      exists: true,
+      data: () => ({ availableBikes: 4, availableDocks: 2 }),
+    });
+    const mockTxUpdate = jest.fn();
+    (dbAdmin.collection as jest.Mock).mockReturnValue({
+      doc: jest.fn().mockReturnValue({}),
+    });
+    (dbAdmin.runTransaction as jest.Mock).mockImplementation(
+      async (cb: (t: any) => Promise<any>) =>
+        cb({ get: mockTxGet, update: mockTxUpdate }),
+    );
+    const res = await removeBike(postRequest({ stationId: "station-1" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.availableBikes).toBe(3); // 4 - 1
+    expect(body.availableDocks).toBe(3); // 2 + 1
   });
 });
