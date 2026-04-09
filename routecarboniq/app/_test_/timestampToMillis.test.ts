@@ -17,7 +17,7 @@ jest.mock("@/app/frontend/services/AnalyticsService", () => ({
 import { timestampToMillis } from "../frontend/pages/rent-a-bike/services/rentalFlow";
 
 describe("timestampToMillis", () => {
-  // ── Falsy inputs ────────────────────────────────────────────────────────────
+  //  Falsy inputs 
 
   it("returns null for null", () => {
     expect(timestampToMillis(null)).toBeNull();
@@ -36,20 +36,20 @@ describe("timestampToMillis", () => {
     expect(timestampToMillis("")).toBeNull();
   });
 
-  // ── Numeric timestamp ───────────────────────────────────────────────────────
+  //  Numeric timestamp 
 
   it("returns the number directly for a positive epoch ms value", () => {
     expect(timestampToMillis(1_234_567_890_000)).toBe(1_234_567_890_000);
   });
 
-  // ── Date object ─────────────────────────────────────────────────────────────
+  //  Date object 
 
   it("handles a native Date object", () => {
     const d = new Date("2026-04-08T12:00:00.000Z");
     expect(timestampToMillis(d)).toBe(d.getTime());
   });
 
-  // ── Firestore Timestamp ─────────────────────────────────────────────────────
+  // ── Firestore Timestamp 
 
   it("handles a Firestore Timestamp-like object with toMillis()", () => {
     const firestoreTs = { toMillis: () => 9_999_999 };
@@ -60,7 +60,7 @@ describe("timestampToMillis", () => {
     expect(timestampToMillis({ seconds: 1_000 })).toBe(1_000_000);
   });
 
-  // ── Unrecognised shapes ─────────────────────────────────────────────────────
+  //  Unrecognised shapes 
 
   it("returns null for an unrecognised plain object", () => {
     expect(timestampToMillis({ foo: "bar" })).toBeNull();

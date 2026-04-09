@@ -6,8 +6,7 @@
  * the happy path response shape.
  */
 
-// ─── Mock setup ───────────────────────────────────────────────────────────────
-
+//  Mock setup 
 const mockTrackEvent = jest.fn();
 jest.mock("@/app/frontend/services/AnalyticsService", () => ({
   AnalyticsService: {
@@ -42,11 +41,11 @@ jest.mock("@/app/api/lib/firebaseAdmin", () => ({
   },
 }));
 
-// ─── Route under test ─────────────────────────────────────────────────────────
+// Route under test 
 
 import { POST as createRental } from "@/app/api/rent-a-bike/rent/create/route";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// Helpers 
 
 const validInput = {
   userId: "user-abc",
@@ -77,10 +76,10 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-// ─── Tests ────────────────────────────────────────────────────────────────────
+//  Tests 
 
 describe("POST /api/rent-a-bike/rent/create — business logic", () => {
-  // ── Station not found ──────────────────────────────────────────────────────
+  //  Station not found 
 
   it("returns 400 when the start station does not exist", async () => {
     mockTransactionGet.mockResolvedValue({ exists: false });
@@ -99,7 +98,7 @@ describe("POST /api/rent-a-bike/rent/create — business logic", () => {
     expect(body.error).toBe("Start station not found.");
   });
 
-  // ── No bikes available ─────────────────────────────────────────────────────
+  //  No bikes available
 
   it("returns 400 when there are no bikes at the station", async () => {
     mockTransactionGet.mockResolvedValue(stationSnapshot(0, 5));
@@ -126,7 +125,7 @@ describe("POST /api/rent-a-bike/rent/create — business logic", () => {
     expect(res.status).toBe(400);
   });
 
-  // ── Successful creation ────────────────────────────────────────────────────
+  // Successful creation 
 
   it("returns 200 on a valid request with bikes available", async () => {
     mockTransactionGet.mockResolvedValue(stationSnapshot(3, 2));

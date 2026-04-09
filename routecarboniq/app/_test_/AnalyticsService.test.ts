@@ -94,7 +94,7 @@ describe("subscribe", () => {
   });
 });
 
-// ─── trackEvent → queue → fetch ───────────────────────────────────────────────
+// trackEvent → queue → fetch
 
 describe("trackEvent", () => {
   it("sends the event to the analytics API endpoint", async () => {
@@ -183,8 +183,7 @@ describe("trackEvent", () => {
   });
 });
 
-// ─── Fetch endpoints ──────────────────────────────────────────────────────────
-
+//  Fetch endpoints
 describe("getUserMetrics", () => {
   it("fetches from the correct user metrics URL", async () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce({

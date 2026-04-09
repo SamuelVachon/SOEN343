@@ -18,7 +18,7 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-// ─── addBikeToStation ─────────────────────────────────────────────────────────
+//  addBikeToStation 
 
 describe("addBikeToStation", () => {
   it("resolves with the response data on a successful request", async () => {
@@ -72,7 +72,7 @@ describe("addBikeToStation", () => {
   });
 });
 
-// ─── removeBikeFromStation ────────────────────────────────────────────────────
+// ─── removeBikeFromStation 
 
 describe("removeBikeFromStation", () => {
   it("resolves with the response data on a successful request", async () => {

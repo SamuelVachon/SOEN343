@@ -36,7 +36,7 @@ import { GET as getUserMetrics } from "@/app/api/analytics/metrics/user/route";
 import { POST as addBike } from "@/app/api/rent-a-bike/stations/inventory/add-bike/route";
 import { POST as removeBike } from "@/app/api/rent-a-bike/stations/inventory/remove-bike/route";
 
-// ─── Firebase mock references ─────────────────────────────────────────────────
+//  Firebase mock references 
 import { dbAdmin } from "@/app/api/lib/firebaseAdmin";
 import { db } from "@/app/frontend/lib/firebaseClient";
 
@@ -46,7 +46,7 @@ beforeEach(() => {
   jest.resetAllMocks();
 });
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// Helpers 
 
 function postRequest(body: unknown): Request {
   return new Request("http://localhost/api/test", {
@@ -60,7 +60,7 @@ function getRequest(url: string): Request {
   return new Request(url);
 }
 
-// ─── rent/create ──────────────────────────────────────────────────────────────
+// rent/create 
 
 describe("POST /api/rent-a-bike/rent/create", () => {
   it("returns 401 when userId is missing", async () => {
@@ -82,7 +82,7 @@ describe("POST /api/rent-a-bike/rent/create", () => {
   });
 });
 
-// ─── rent/start ───────────────────────────────────────────────────────────────
+//  rent/start 
 
 describe("POST /api/rent-a-bike/rent/start", () => {
   it("returns 400 when rentalId is missing", async () => {
@@ -102,7 +102,7 @@ describe("POST /api/rent-a-bike/rent/start", () => {
   });
 });
 
-// ─── analytics/track ─────────────────────────────────────────────────────────
+//  analytics/track 
 
 describe("POST /api/analytics/track", () => {
   it("returns 400 when events field is missing", async () => {
@@ -134,7 +134,7 @@ describe("POST /api/analytics/track", () => {
   });
 });
 
-// ─── analytics/metrics/user ───────────────────────────────────────────────────
+// analytics/metrics/user 
 
 describe("GET /api/analytics/metrics/user", () => {
   it("returns 400 when userId query param is missing", async () => {
@@ -160,7 +160,7 @@ describe("GET /api/analytics/metrics/user", () => {
   });
 });
 
-// ─── stations/inventory/add-bike ─────────────────────────────────────────────
+// stations/inventory/add-bike 
 
 describe("POST /api/rent-a-bike/stations/inventory/add-bike", () => {
   it("returns 400 when stationId is missing", async () => {
@@ -180,7 +180,7 @@ describe("POST /api/rent-a-bike/stations/inventory/add-bike", () => {
   });
 });
 
-// ─── stations/inventory/remove-bike ──────────────────────────────────────────
+//  stations/inventory/remove-bike 
 
 describe("POST /api/rent-a-bike/stations/inventory/remove-bike", () => {
   it("returns 400 when stationId is missing", async () => {
@@ -200,7 +200,7 @@ describe("POST /api/rent-a-bike/stations/inventory/remove-bike", () => {
   });
 });
 
-// ─── Happy paths ──────────────────────────────────────────────────────────────
+//  Happy paths 
 
 describe("POST /api/rent-a-bike/rent/start — happy path", () => {
   it("returns 200 with { success: true } when rentalId is valid", async () => {

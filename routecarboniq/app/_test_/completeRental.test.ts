@@ -5,7 +5,7 @@
  * duration and charge calculations.
  */
 
-// ─── Mock setup ───────────────────────────────────────────────────────────────
+// Mock setup 
 
 const mockTrackEvent = jest.fn();
 jest.mock("@/app/frontend/services/AnalyticsService", () => ({
@@ -37,11 +37,11 @@ jest.mock("@/app/api/lib/firebaseAdmin", () => ({
   },
 }));
 
-// ─── Route under test ─────────────────────────────────────────────────────────
+// Route under test 
 
 import { POST as completeRental } from "@/app/api/rent-a-bike/rent/complete/route";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// Helpers
 
 const FIXED_NOW = new Date("2026-04-08T12:00:00.000Z").getTime();
 
@@ -88,10 +88,10 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-// ─── Tests ────────────────────────────────────────────────────────────────────
+//  Tests 
 
 describe("POST /api/rent-a-bike/rent/complete", () => {
-  // ── Rental not found ──────────────────────────────────────────────────────
+  //  Rental not found 
 
   it("returns 400 when the rental does not exist", async () => {
     mockRentalGet.mockResolvedValue({ exists: false });
@@ -106,7 +106,7 @@ describe("POST /api/rent-a-bike/rent/complete", () => {
     expect(body.error).toBe("Rental not found.");
   });
 
-  // ── Return station not found ───────────────────────────────────────────────
+  // Return station not found 
 
   it("returns 400 when the return station does not exist", async () => {
     mockRentalGet.mockResolvedValue(rentalData());
@@ -123,7 +123,7 @@ describe("POST /api/rent-a-bike/rent/complete", () => {
     expect(body.error).toBe("Return station not found.");
   });
 
-  // ── Duration & charge calculation ─────────────────────────────────────────
+  // Duration & charge calculation
 
   it("returns 200 with the correct duration and charge for a 5-minute ride", async () => {
     mockRentalGet.mockResolvedValue(rentalData()); // default: startedAt = 5 min ago
@@ -165,7 +165,7 @@ describe("POST /api/rent-a-bike/rent/complete", () => {
     expect(body.actualDurationMinutes).toBe(1);
   });
 
-  // ── Station inventory update ───────────────────────────────────────────────
+  // Station inventory update 
 
   it("increments availableBikes and decrements availableDocks at the return station", async () => {
     mockRentalGet.mockResolvedValue(rentalData());
@@ -194,7 +194,7 @@ describe("POST /api/rent-a-bike/rent/complete", () => {
     );
   });
 
-  // ── Rental document update ─────────────────────────────────────────────────
+  // Rental document update 
 
   it("marks the rental as closed and completed in Firestore", async () => {
     mockRentalGet.mockResolvedValue(rentalData());
@@ -213,7 +213,7 @@ describe("POST /api/rent-a-bike/rent/complete", () => {
     );
   });
 
-  // ── Analytics ─────────────────────────────────────────────────────────────
+  //  Analytics 
 
   it("fires an analytics event after a successful return", async () => {
     mockRentalGet.mockResolvedValue(rentalData());

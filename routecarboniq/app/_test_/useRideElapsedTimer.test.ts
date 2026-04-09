@@ -49,7 +49,7 @@ afterEach(() => {
 });
 
 describe("useRideElapsedTimer", () => {
-  // ── No rental ────────────────────────────────────────────────────────────────
+  // ── No rental 
 
   it("returns 0 when activeRental is null", () => {
     const { result } = renderHook(() => useRideElapsedTimer(null));
@@ -61,7 +61,7 @@ describe("useRideElapsedTimer", () => {
     expect(result.current).toBe(0);
   });
 
-  // ── Initial elapsed time ──────────────────────────────────────────────────
+  // ── Initial elapsed time 
 
   it("calculates the correct elapsed seconds on mount", () => {
     const startedAt = FIXED_NOW - 30_000; // 30 seconds ago
@@ -79,7 +79,7 @@ describe("useRideElapsedTimer", () => {
     expect(result.current).toBe(0);
   });
 
-  // ── Timer increments ────────────────────────────────────────────────────────
+  // ── Timer increments 
 
   it("increments by 1 every second while the rental is active", () => {
     const startedAt = FIXED_NOW - 10_000; // 10 seconds ago
@@ -95,7 +95,7 @@ describe("useRideElapsedTimer", () => {
     expect(result.current).toBe(13);
   });
 
-  // ── Rental change ────────────────────────────────────────────────────────────
+  // ── Rental change 
 
   it("resets to 0 when the rental changes to null", () => {
     const startedAt = FIXED_NOW - 20_000;
@@ -113,7 +113,7 @@ describe("useRideElapsedTimer", () => {
     expect(result.current).toBe(0);
   });
 
-  // ── Cleanup ──────────────────────────────────────────────────────────────────
+  // ── Cleanup 
 
   it("calls clearInterval when the component unmounts", () => {
     const clearSpy = jest.spyOn(window, "clearInterval");
