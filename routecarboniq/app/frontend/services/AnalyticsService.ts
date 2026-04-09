@@ -18,7 +18,7 @@ export interface EventData {
 type ObserverCallback = (eventName: EventName, eventData: EventData) => void;
 
 export class AnalyticsService {
-  private static instance: AnalyticsService;
+  private static instance: AnalyticsService | undefined;
   private queue: { eventName: EventName; eventData: EventData }[] = [];
   private isProcessing = false;
   private observers: ObserverCallback[] = [];
@@ -36,7 +36,7 @@ export class AnalyticsService {
 
   /** Resets the singleton — for use in unit tests only. */
   public static resetInstance(): void {
-    AnalyticsService.instance = undefined!;
+    AnalyticsService.instance = undefined;
   }
 
   // Observer pattern: register components that want to listen
