@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "jest",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@googlemaps/google-maps-services-js": "^3.4.2",
