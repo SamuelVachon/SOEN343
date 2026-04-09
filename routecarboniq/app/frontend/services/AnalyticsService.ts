@@ -1,9 +1,11 @@
-export type EventName =
-  | "USER_LOGIN"
-  | "RIDE_COMPLETED"
-  | "SESSION_ENDED"
-  | "SCREEN_TIME_LOGGED"
-  | "API_REQUEST_COMPLETED";
+export type EventName = 
+  | 'USER_LOGIN' 
+  | 'RIDE_COMPLETED' 
+  | 'SESSION_ENDED'
+  | 'SCREEN_TIME_LOGGED'
+  | 'API_REQUEST_COMPLETED'
+  | 'PLAN_TRIP_SEARCH'
+  | 'START_NAVIGATION';
 
 export interface EventData {
   userId?: string;
@@ -68,10 +70,7 @@ export class AnalyticsService {
       const batch = this.queue.splice(0, 10); // Batch limit
 
       try {
-        const baseUrl =
-          typeof window !== "undefined"
-            ? ""
-            : process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+        const baseUrl = typeof globalThis !== 'undefined' && globalThis.window ? '' : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000');
         await fetch(`${baseUrl}/api/analytics/track`, {
           method: "POST",
           headers: {

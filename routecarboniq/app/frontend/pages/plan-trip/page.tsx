@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
+import { AnalyticsService } from "../../services/AnalyticsService";
 import { APIProvider, Map, useMapsLibrary, useMap} from '@vis.gl/react-google-maps';
-import { Bike, Bus, Car, Footprints } from "lucide-react";
+import { Bike, Bus, Car, Footprints, Navigation } from "lucide-react";
 
 enum TravelMode {
     DRIVING = "DRIVING",
@@ -27,7 +28,7 @@ interface RouteData {
 
 
     function initAutocomplete(originRef: React.RefObject<HTMLInputElement | null>, destinationRef: React.RefObject<HTMLInputElement | null>, setOriginCoords: (coords: google.maps.LatLng) => void, setDestinationCoords: (coords: google.maps.LatLng) => void) {
-        if (!window.google || !originRef.current || !destinationRef.current) return;
+        if (typeof globalThis === 'undefined' || !globalThis.google || !originRef.current || !destinationRef.current) return;
 
         const originAutocomplete = new google.maps.places.Autocomplete(originRef.current);
         const destinationAutocomplete = new google.maps.places.Autocomplete(destinationRef.current);
@@ -144,7 +145,7 @@ export default function PlanTrip() {
     const router = useRouter();
 
     // State for Map and Directions
-    const [position, setPosition] = useState<{ lat: number; lng: number }>({ lat: 45.5017, lng: -73.5673 });
+    const position = { lat: 45.5017, lng: -73.5673 };
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
     
     // UI state
@@ -162,34 +163,24 @@ export default function PlanTrip() {
         [TravelMode.BICYCLING]: null,
         [TravelMode.TRANSIT]: null,
     });
+    const searchStartTimeRef = useRef<number | null>(null);
+    const routeCalcTrackedRef = useRef(false);
 
     // Redirect unauthenticated users to home
     useEffect(() => {
         if (!loading && !user) router.replace("/");
     }, [loading, user, router]);
 
-/*     // Handle form submission to request directions (currently not used since we update on autocomplete selection)
-    function handleSearch(e: SubmitEvent<HTMLFormElement>) {
-        e.preventDefault();
-        const formData = new FormData(e.target as HTMLFormElement);
-        if (originCoords) {
-            setSearchOrigin(originCoords);
-        }
-        if (destinationCoords) {
-            setSearchDestination(destinationCoords);
-        }
-        setOriginCoords(null);
-        setDestinationCoords(null);
-        originRef.current!.value = "";
-        destinationRef.current!.value = "";
-    } */
-
     // Update search state when coordinates are set from autocomplete
     useEffect(() => {
         if(!originCoords || !destinationCoords) return;
         setSearchOrigin(originCoords);
         setSearchDestination(destinationCoords);
-    }, [originCoords, destinationCoords]);
+        
+        // Track search start time for latency measurement
+        searchStartTimeRef.current = Date.now();
+        routeCalcTrackedRef.current = false;
+    }, [originCoords, destinationCoords, user]);
 
     // Redirect unauthenticated users to home
     if (loading) return <p>Loading...</p>;
@@ -223,6 +214,16 @@ export default function PlanTrip() {
         const distance = leg.distance?.value || 0;
         const duration = leg.duration?.value || 0;
         const carbonEmission = calculateCarbonEmission(mode, distance, leg.steps || []);
+
+        // Track Plan A Trip Search on first route calculation
+        if (searchStartTimeRef.current && !routeCalcTrackedRef.current) {
+            const latencyMs = Date.now() - searchStartTimeRef.current;
+            AnalyticsService.getInstance().trackEvent('API_REQUEST_COMPLETED', {
+                endpoint: 'Plan A Trip Search',
+                latencyMs: latencyMs
+            });
+            routeCalcTrackedRef.current = true;
+        }
 
         setRouteData(prev => ({
             ...prev,
@@ -278,18 +279,15 @@ export default function PlanTrip() {
         <div className="flex flex-col h-screen bg-slate-50">
             {/* Header Search area */}
             <div className="bg-white p-4 border-b border-slate-200 shrink-0 shadow-xs">
-                <form onSubmit={(e) => { /*handleSearch(e) */ }} className="flex flex-wrap items-end gap-3 max-w-4xl mx-auto">
-                    <div className="flex-1 min-w-[200px]">
-                        <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Start Point</label>
-                        <input ref={originRef} name="origin" placeholder="Choose Start point..." className="w-full h-10 px-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" />
+                <form onSubmit={(e) => e.preventDefault()} className="flex flex-wrap items-end gap-3 max-w-4xl mx-auto">
+                    <div className="flex-1 min-w-50">
+                        <label htmlFor="origin" className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Start Point</label>
+                        <input id="origin" ref={originRef} name="origin" placeholder="Choose Start point..." className="w-full h-10 px-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" />
                     </div>
-                    <div className="flex-1 min-w-[200px]">
-                        <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Destination</label>
-                        <input ref={destinationRef} name="destination" placeholder="Choose Destination..." className="w-full h-10 px-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" />
+                    <div className="flex-1 min-w-50">
+                        <label htmlFor="destination" className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Destination</label>
+                        <input id="destination" ref={destinationRef} name="destination" placeholder="Choose Destination..." className="w-full h-10 px-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm" />
                     </div>
-                    {/*<button type="submit" className="h-10 px-6 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg text-sm transition-colors shadow-sm whitespace-nowrap">
-                        Find Route
-                    </button>*/}
                 </form>
             </div>
 
@@ -302,7 +300,7 @@ export default function PlanTrip() {
                 )}
 
                 <APIProvider apiKey={apiKey} onLoad={() => {initAutocomplete(originRef, destinationRef, setOriginCoords, setDestinationCoords) }} libraries={["places"]}>
-                    <Map defaultCenter={position} defaultZoom={12} mapId="DEMO_MAP_ID" disableDefaultUI={true}>
+                    <Map defaultCenter={position} defaultZoom={12} mapId="DEMO_MAP_ID" disableDefaultUI>
                         <TransitMapLayer visible={selectedMode === TravelMode.TRANSIT} />
                         {searchOrigin && searchDestination && Object.values(TravelMode).map((mode) => (
                             <Directions 
@@ -321,7 +319,7 @@ export default function PlanTrip() {
 
                 {/* Route Stats Card Overlay */}
                 {searchOrigin && searchDestination && routeData[selectedMode] && (
-                    <div className="absolute top-4 right-4 bg-white/95 backdrop-blur shadow-lg border border-slate-200 rounded-xl p-4 w-[340px] max-h-[90vh] overflow-y-auto scbar-hide z-10 flex flex-col gap-5">
+                    <div className="absolute top-4 right-4 bg-white/95 backdrop-blur shadow-lg border border-slate-200 rounded-xl p-4 w-85 max-h-[90vh] overflow-y-auto scbar-hide z-10 flex flex-col gap-5">
                         
                         {/* Transportation Mode Selector */}
                         <div>
@@ -345,7 +343,7 @@ export default function PlanTrip() {
                                         {routeData[mode] ? (
                                             <>
                                                 <div className={`font-semibold text-[11px] leading-none mb-1 whitespace-nowrap truncate w-full flex justify-center`}>
-                                                    {Math.round(routeData[mode]!.duration / 60)} min
+                                                    {Math.round(routeData[mode]?.duration ? routeData[mode].duration / 60 : 0)} min
                                                 </div>
                                                 {mode !== TravelMode.DRIVING && (
                                                     <div className={`text-[9px] font-bold px-1 py-0.5 rounded-sm whitespace-nowrap w-full truncate ${selectedMode === mode ? 'bg-white/20 text-white' : 'bg-black/5 text-inherit'} opacity-90 leading-none flex justify-center`}>
@@ -367,23 +365,23 @@ export default function PlanTrip() {
                             <div className="space-y-3">
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-slate-500 font-medium">Distance</span>
-                                    <span className="font-bold text-slate-700">{(routeData[selectedMode]!.distance / 1000).toFixed(2)} km</span>
+                                    <span className="font-bold text-slate-700">{((routeData[selectedMode]?.distance || 0) / 1000).toFixed(2)} km</span>
                                 </div>
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-slate-500 font-medium">Duration</span>
-                                    <span className="font-bold text-slate-700">{Math.round(routeData[selectedMode]!.duration / 60)} min</span>
+                                    <span className="font-bold text-slate-700">{Math.round((routeData[selectedMode]?.duration || 0) / 60)} min</span>
                                 </div>
                                 <div className="flex justify-between items-center text-sm pt-3 border-t border-slate-100">
                                     <span className="text-slate-500 font-medium">Estimated CO2</span>
                                     <div className="flex items-center gap-2">
                                         {selectedMode !== TravelMode.DRIVING && routeData[TravelMode.DRIVING] && (
                                             <span className="text-slate-400 line-through text-xs">
-                                                {formatEmission(routeData[TravelMode.DRIVING]!.carbonEmission)} per car
+                                                {formatEmission(routeData[TravelMode.DRIVING]?.carbonEmission || 0)} per car
                                             </span>
                                         )}
                                         <div className="flex flex-col items-end">
                                             <span className={`font-bold text-base ${selectedMode === TravelMode.DRIVING ? 'text-red-600' : 'text-emerald-600'}`}>   
-                                                {formatEmission(routeData[selectedMode]!.carbonEmission)}
+                                                {formatEmission(routeData[selectedMode]?.carbonEmission || 0)}
                                                 {selectedMode === TravelMode.DRIVING && " per car"}
                                             </span>
                                             {selectedMode === TravelMode.DRIVING && (
@@ -395,6 +393,50 @@ export default function PlanTrip() {
                                     </div>
                                 </div>
                             </div>
+                            
+                            {/* Start Navigation Button */}
+                            <a 
+                                href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(originRef.current?.value || 'current')}&destination=${encodeURIComponent(destinationRef.current?.value || 'current')}&travelmode=${selectedMode.toLowerCase()}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={async () => {
+                                    const navStartTime = Date.now();
+
+                                    // Track carbon emissions
+                                    const modeData = routeData[selectedMode];
+                                    const carData = routeData[TravelMode.DRIVING];
+                                    if (user && modeData && carData) {
+                                        const carbonSaved = Math.max(0, carData.carbonEmission - modeData.carbonEmission);
+                                        try {
+                                            const token = await user.getIdToken();
+                                            await fetch('/api/users/track-emission', {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'Authorization': `Bearer ${token}`,
+                                                },
+                                                body: JSON.stringify({
+                                                    carbonSaved,
+                                                    carbonEmitted: modeData.carbonEmission,
+                                                }),
+                                            });
+                                        } catch (err) {
+                                            console.error('Failed to track emission:', err);
+                                        }
+                                    }
+
+                                    // Track navigation after emissions are sent
+                                    const navLatencyMs = Date.now() - navStartTime;
+                                    AnalyticsService.getInstance().trackEvent('API_REQUEST_COMPLETED', {
+                                        endpoint: 'Start Navigation',
+                                        latencyMs: navLatencyMs
+                                    });
+                                }}
+                                className="mt-5 w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors"
+                            >
+                                <Navigation size={18} />
+                                <span>Start Navigation</span>
+                            </a>
                         </div>
                     </div>
                 )}

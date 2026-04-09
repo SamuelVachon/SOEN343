@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import { subscribeToAdminAccess } from "../../lib/adminAccess";
 import { AnalyticsService } from "../../services/AnalyticsService";
+import { CarbonMetrics, GlobalCarbonMetrics } from "./CarbonMetrics";
 import {
   Activity,
   Bike,
@@ -184,10 +185,18 @@ export default function DashboardPage() {
                 bgColor="bg-purple-50"
               />
             </div>
+            <div className="mt-6">
+              <CarbonMetrics />
+            </div>
           </section>
         ) : (
           /* Admin Stats Section */
           <section className="w-full max-w-4xl mx-auto">
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-slate-700 mb-4">Carbon Emissions Overview</h2>
+              <GlobalCarbonMetrics />
+            </div>
+            <h2 className="text-lg font-semibold text-slate-700 mb-4">System Metrics</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <MetricCard 
                 title="System Rides" 
