@@ -15,6 +15,14 @@ export async function GET(request: NextRequest) {
     }
 
     const data = metricsDoc.data();
+
+    if (!data) {
+      return NextResponse.json({
+        totalCarbonSaved: 0,
+        totalCarbonEmitted: 0,
+      });
+    }
+
     return NextResponse.json({
       totalCarbonSaved: data.totalCarbonSaved || 0,
       totalCarbonEmitted: data.totalCarbonEmitted || 0,

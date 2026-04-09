@@ -19,7 +19,7 @@ export function CarbonMetrics({ isAdmin = false }: CarbonMetricsProps) {
     async function fetchCarbonMetrics() {
       try {
         const db = getFirestore();
-        const userAnalyticsRef = doc(db, "user_analytics", user.uid);
+        const userAnalyticsRef = doc(db, "user_analytics", user!.uid);
         const docSnap = await getDoc(userAnalyticsRef);
 
         if (docSnap.exists()) {
